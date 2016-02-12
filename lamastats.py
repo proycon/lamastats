@@ -295,9 +295,24 @@ def header(data):
                 padding: 10px;
                 margin-bottom: 20px;
             }
+            #nav {
+                background: #d2de84;
+                color: white;
+                text-align: center;
+            }
+            #nav a, #nav a:link, #nav a:active {
+                margin: 0px;
+                padding: 3px;
+                color: black;
+                font-weight: bold;
+            }
         </style>
     </head>
-    <body>"""
+    <body>
+    <div id="nav">
+     [ <a href="lamastats.html">Software Statistics</a> | <a href="clamstats.html">Webservice Statistics</a> ]
+    </div>
+    """
 
 
 
