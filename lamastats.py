@@ -280,9 +280,9 @@ def installsperdaygraph(hitsperday):
     startdate = date(2016,1,1) #min(hitsperday.keys())
     enddate = datetime.now().date()
     #out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">Virtualenv</span></strong>, <strong><span style=\"color: blue\">Website</span></strong>, <strong><span style=\"color: green\"></strong></div>"
-    out = "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-hitsperday\"></div>\n"
+    out = "<div class=\"ct-chart ct-double-octave\" id=\"lamachine-installsperday\"></div>\n"
     out += "<script>\n"
-    out += "new Chartist.Line('#" +name + "-installsperday', {\n"
+    out += "new Chartist.Line('#lamachine-installsperday', {\n"
     out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate))) + " ],\n"
     out += "   series: [\n"
     out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
@@ -455,12 +455,13 @@ def countkey(l, key):
     return sum(x.get(key,0) for x in d)
 
 
-def toptable(hits, key, title, n=25):
+def toptable(datalist, key, title, n=25):
     out = "<h3>" + title + "</h3>"
     out += "<table>\n"
     d = defaultdict(int)
-    for hit in hits:
-        d[hit[key]] += 1
+    for hits in datalist.values():
+        for hit in hits:
+            d[hit[key]] += 1
     total = sum(d.values())
     for key, value in list(sorted(d.items(), key= lambda x: -1 * x[1]))[:n]:
         out += "<tr><th>" + key+ "</th><td>" + str(value) + "</td><td>" + str(round((value/total) * 100,2)) +  "%</td></tr>\n"
