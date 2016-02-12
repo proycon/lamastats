@@ -11,7 +11,8 @@ import pygeoip
 
 gi = pygeoip.GeoIP('GeoIP.dat')
 
-ignoreips = ('77.161.34.157','127.0.0.1')
+ignoreips = ('77.161.34.157',) #proycon@home
+internalips = ('127.0.0.1', '131.174.30.3',)
 
 
 def daterange(start_date, end_date):
@@ -133,6 +134,39 @@ def parselog(logfiles):
     return data
 
 
+def parseclamlog(logfiles):
+    data = {
+        'names': set(),
+        'projectsperday_internal': defaultdict(lambda: defaultdict(int)),
+        'projectsperday': defaultdict(lambda: defaultdict(int)),
+        'totalprojects': defaultdict(int),
+    }
+    line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
+    for logfile in logfiles:
+        if logfile[-3:] == '.gz':
+            f = gzip.open(logfile,'r',encoding='utf-8')
+        else:
+            f = open(logfile,'r',encoding='utf-8')
+        for line in f:
+            if line.find('PUT') != -1:
+                parsed_line = line_parser(line)
+                #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
+                if parsed_line['request_method'] == 'PUT' and parsed_line['status'] == '201':
+                    #found a 'project created' entry
+                    name = parsed_line['request_url'].strip('/').split('/')[0]
+                    data['names'].add(name)
+                    date = parsed_line['time_received_datetimeobj'].date()
+
+                    ip = parsed_line['remote_host']
+                    if ip in ignoreips:
+                        continue
+
+                    if ip in internalips:
+                        data['projectsperday_internal'][name][date] += 1
+                    data['projectsperday'][name][date] += 1
+                    data['totalprojects'][name] += 1
+
+    return data
 
 def hitsperdaygraph(name, hitsperday):
     def counttype(hits, hittype):
@@ -160,12 +194,33 @@ def hitsperdaygraph(name, hitsperday):
     out += "</script>\n"
     return out
 
+def projectsperdaygraph(name, projectsperday, projectsperday_internal):
+    def counttype(hits, hittype):
+        count = 0
+        for hit in hits:
+            if hit['type'] == hittype:
+                count += 1
+        return str(count)
+
+    total = len(projectsperday)
+    startdate = date(2016,1,1) #min(projectsperday.keys())
+    enddate = datetime.now().date()
+    out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total new projects per day</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">By internal sources</span></strong></div>"
+    out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-projectsperday\"></div>\n"
+    out += "<script>\n"
+    out += "new Chartist.Line('#" +name + "-projectsperday', {\n"
+    out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate))) + " ],\n"
+    out += "   series: [\n"
+    out += "        [" + ",".join((str(projectsperday.get(date,0)) for date in daterange(startdate,enddate))) + " ],\n"
+    out += "        [" + ",".join((str(projectsperday_internal.get(date,0)) for date in daterange(startdate,enddate))) + " ],\n"
+    out += "   ]\n"
+    out += "},{ axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
+    out += "</script>\n"
+    return out
 
 
-
-
-def outputreport(data):
-    out = """<html>
+def header(data):
+    return """<html>
     <head>
         <title>LaMa Software Statistical Report</title>
         <link rel="stylesheet" href="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css"/>
@@ -241,6 +296,11 @@ def outputreport(data):
         </style>
     </head>
     <body>"""
+
+
+
+def outputreport(data):
+    out = header(data)
     out += "        <h1>LaMa Software Statistical Report</h1>\n"
     out += "<section>"
     out += "<h2>Total</h2>"
@@ -254,6 +314,26 @@ def outputreport(data):
         out += "        <h2>" + name + "</h2>\n"
         out += "        <h3>" + name + " - Visits per day</h3>"
         out += hitsperdaygraph(name, data['hitsperday'][name])
+        out += "</section>\n"
+    out += """    </body>
+</html>"""
+    return out
+
+def outputclamreport(data):
+    out = header(data)
+    out += "        <h1>CLAM webservice Statistical Report</h1>\n"
+    out += "<section>"
+    out += "<h2>Total</h2>"
+    out += "<table>\n"
+    for name in sorted(data['names'], key= lambda x: -1 * data['totalprojects'][x]):
+        out += "<tr><th>" + name + "</th><td>" + str(data['totalprojects'][name]) + "</td></tr>\n"
+    out += "</table>\n"
+    out += "</section>"
+    for name in sorted(data['names'], key= lambda x: x.lower()):
+        out += "<section>\n"
+        out += "        <h2>" + name + "</h2>\n"
+        out += "        <h3>" + name + " - New projects per day</h3>"
+        out += projectsperdaygraph(name, data['projectsperday'][name], data['projectsperday_internal'][name])
         out += "</section>\n"
     out += """    </body>
 </html>"""
@@ -276,6 +356,10 @@ def main():
     #    json.dump(data, f)
     with open(outputdir + '/lamastats.html','w',encoding='utf-8') as f:
         print(outputreport(data), file=f)
+
+    data = parseclamlog(args.logfiles)
+    with open(outputdir + '/clamstats.html','w',encoding='utf-8') as f:
+        print(outputclamreport(data), file=f)
 
 
 
