@@ -20,6 +20,23 @@ def daterange(start_date, end_date):
         yield start_date + timedelta(n)
 
 
+def parseuseragent(parsed_line):
+    useragent = ""
+    bot = False
+    if 'request_header_user_agent' in parsed_line:
+        useragent = parsed_line['request_header_user_agent']
+    else:
+        useragent = ""
+    if useragent.lower().find("bot") != -1:
+        #no bots
+        print("- skipping bot: " + useragent, file=sys.stderr)
+        bot = True
+    elif useragent.lower().find("crawler") != -1:
+        #no bots
+        print("- skipping bot: " + useragent, file=sys.stderr)
+        bot = True
+    return useragent, bot
+
 def parselog(logfiles):
     data = {
         'names': set(),
@@ -28,6 +45,8 @@ def parselog(logfiles):
         'platformstats': defaultdict(lambda: defaultdict(int)),
         'countrystats': defaultdict(lambda: defaultdict(int)),
         'totalhits': defaultdict(int),
+        'lamachine': defaultdict(list),
+        'lamachinetotal': 0
     }
     line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
     for logfile in logfiles:
@@ -37,7 +56,66 @@ def parselog(logfiles):
         else:
             f = open(logfile,'r',encoding='utf-8')
         for line in f:
-            if line.find('lamabadge') != -1:
+            if line.find('lamachinetracker') != -1:
+                parsed_line = line_parser(line)
+                if parsed_line['request_url'].startswith("/lamachinetracker.php/"):
+                    args = parsed_line['request_url'][len("/lamachinetracker.php/"):]
+                    args = args.split('/')
+                    if len(args) == 4:
+                        form, mode,stabledev,pythonversion = args
+                    elif len(args) == 7:
+                        form, mode,stabledev,pythonversion,os_id, distrib_id,distrib_release  = args
+                    else:
+                        print("- skipping invalid lamachinetracker: " + "/".join(args), file=sys.stderr)
+                        continue
+
+                    if form not in ('virtualenv','docker','vagrants') or mode not in ('new','update') or stabledev not in ('stable','dev'):
+                        print("- skipping invalid lamachinetracker, invalid form/mode/stabledev", file=sys.stderr)
+                        continue
+
+                    date = parsed_line['time_received_datetimeobj'].date()
+
+                    useragent, bot = parseuseragent(parsed_line)
+                    if bot:
+                        continue
+
+                    #ip = parsed_line['remote_host']
+                    #if ip in ignoreips:
+                    #    continue
+
+                    country = 'unknown'
+                    try:
+                        country = gi.country_code_by_addr(ip)
+                    except:
+                        pass
+
+                    hit = {
+                        'form': form,
+                        'mode': mode,
+                        'stabledev': stabledev,
+                        'pythonversion': pythonversion,
+                        'ip': ip,
+                        'os': os_id,
+                        'distrib': distrib_id + ' ' + distrib_release,
+                        'country':country
+                    }
+                    #print("DEBUG hit:", hit,file=sys.stderr)
+
+                    exists = False
+                    if not date in data['lamachine']:
+                        data['lamachine'][date] = []
+                    for prevhit in data['lamachine'][date]:
+                        if hit == prevhit:
+                            exists = True
+                            break
+
+                    if not exists:
+                        print("- Adding LaMachine hit: ", hit, file=sys.stderr)
+                        data['lamachine'][date].append(hit)
+                        data['lamachinetotal'] += 1
+
+
+            elif line.find('lamabadge') != -1:
                 parsed_line = line_parser(line)
                 #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
                 if parsed_line['request_url'].startswith("/lamabadge.php/"):
@@ -53,24 +131,15 @@ def parselog(logfiles):
                         referer = parsed_line['request_header_referer']
                     else:
                         referer = ""
-                    if 'request_header_user_agent' in parsed_line:
-                        useragent = parsed_line['request_header_user_agent']
-                    else:
-                        useragent = ""
                     ip = parsed_line['remote_host']
                     if ip in ignoreips:
                         continue
 
                     proxied = False
-                    if useragent.lower().find("bot") != -1:
-                        #no bots
-                        print("- skipping bot: " + useragent, file=sys.stderr)
+                    useragent, bot = parseuseragent(parsed_line)
+                    if bot: 
                         continue
-                    elif useragent.lower().find("crawler") != -1:
-                        #no bots
-                        print("- skipping bot: " + useragent, file=sys.stderr)
-                        continue
-                    elif useragent.find("Camo Asset Proxy") != -1:
+                    if useragent.find("Camo Asset Proxy") != -1:
                         hittype = 'github'
                         ip = '0.0.0.0' #irrelevant, proxied
                         proxied = True
@@ -199,6 +268,29 @@ def hitsperdaygraph(name, hitsperday):
     out += "</script>\n"
     return out
 
+def installsperdaygraph(hitsperday):
+    def counttype(hits, hittype):
+        count = 0
+        for hit in hits:
+            if hit['type'] == hittype:
+                count += 1
+        return str(count)
+
+    total = len(hitsperday)
+    startdate = date(2016,1,1) #min(hitsperday.keys())
+    enddate = datetime.now().date()
+    #out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">Virtualenv</span></strong>, <strong><span style=\"color: blue\">Website</span></strong>, <strong><span style=\"color: green\"></strong></div>"
+    out = "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-hitsperday\"></div>\n"
+    out += "<script>\n"
+    out += "new Chartist.Line('#" +name + "-installsperday', {\n"
+    out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate))) + " ],\n"
+    out += "   series: [\n"
+    out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
+    out += "   ]\n"
+    out += "},{ axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
+    out += "</script>\n"
+    return out
+
 def projectsperdaygraph(name, projectsperday, projectsperday_internal):
     def counttype(hits, hittype):
         count = 0
@@ -313,7 +405,7 @@ def header(data):
     </head>
     <body>
     <div id="nav">
-     [ <a href="lamastats.html">Software Statistics</a> | <a href="clamstats.html">Webservice Statistics</a> ]
+     [ <a href="lamastats.html">Software Statistics</a> | <a href="clamstats.html">Webservice Statistics</a> | <a href="lamachinestats.html">LaMachine Statistics</a> ]
     </div>
     """
 
@@ -359,6 +451,41 @@ def outputclamreport(data):
 </html>"""
     return out
 
+def countkey(l, key):
+    return sum(x.get(key,0) for x in d)
+
+
+def toptable(hits, key, title, n=25):
+    out = "<h3>" + title + "</h3>"
+    out += "<table>\n"
+    d = defaultdict(int)
+    for hit in hits:
+        d[hit[key]] += 1
+    total = sum(d.values())
+    for key, value in list(sorted(d.items(), key= lambda x: -1 * x[1]))[:n]:
+        out += "<tr><th>" + key+ "</th><td>" + str(value) + "</td><td>" + str(round((value/total) * 100,2)) +  "%</td></tr>\n"
+    out += "</table>\n"
+    return out
+
+
+def outputlamachinereport(data):
+    out = header(data)
+    out += "        <h1>LaMachine Statistical Report</h1>\n"
+    out += "<section>"
+    out += "<h2>General Statistics</h2>"
+    out += toptable(data['lamachine'], 'form','LaMachine Form')
+    out += toptable(data['lamachine'], 'mode','LaMachine Mode')
+    out += toptable(data['lamachine'], 'os','OS (type)')
+    out += toptable(data['lamachine'], 'distrib','OS (exact)')
+    out += toptable(data['lamachine'], 'pythonversion','Python Version')
+    out += "</section>"
+    out += "<section>\n"
+    out += "        <h3>Installations/updates per day</h3>"
+    out += installsperdaygraph(data['lamachine'])
+    out += "</section>\n"
+    out += """    </body>
+</html>"""
+    return out
 
 def main():
     parser = argparse.ArgumentParser(description="Language Machines Software Statistical Analyser", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -376,6 +503,8 @@ def main():
     #    json.dump(data, f)
     with open(outputdir + '/lamastats.html','w',encoding='utf-8') as f:
         print(outputreport(data), file=f)
+    with open(outputdir + '/lamachinestats.html','w',encoding='utf-8') as f:
+        print(outputlamachinereport(data), file=f)
 
     data = parseclamlog(args.logfiles)
     with open(outputdir + '/clamstats.html','w',encoding='utf-8') as f:
