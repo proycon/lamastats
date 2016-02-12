@@ -4,6 +4,8 @@ import sys
 import argparse
 from collections import defaultdict
 from datetime import timedelta, date, datetime
+import gzip
+import json
 import apache_log_parser
 import pygeoip
 
@@ -17,15 +19,21 @@ def daterange(start_date, end_date):
         yield start_date + timedelta(n)
 
 
-def parselog(logfile):
-    hitsperday = defaultdict(dict)
-    typestats = defaultdict(lambda: defaultdict(int))
-    platformstats = defaultdict(lambda: defaultdict(int))
-    countrystats = defaultdict(lambda: defaultdict(int))
-    totalhits = defaultdict(int)
-    names = set()
+def parselog(logfiles):
+    data = {
+        'names': set(),
+        'hitsperday': defaultdict(dict),
+        'typestats': defaultdict(lambda: defaultdict(int)),
+        'platformstats': defaultdict(lambda: defaultdict(int)),
+        'countrystats': defaultdict(lambda: defaultdict(int)),
+        'totalhits': defaultdict(int),
+    }
     line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
-    with open(logfile,'r',encoding='utf-8') as f:
+    for logfile in logfiles:
+        if logfile[-3:] == '.gz':
+            f = gzip.open(logfile,'r',encoding='utf-8')
+        else:
+            f = open(logfile,'r',encoding='utf-8')
         for line in f:
             if line.find('lamabadge') != -1:
                 parsed_line = line_parser(line)
@@ -37,7 +45,7 @@ def parselog(logfile):
                         print("- skipping name " + name, file=sys.stderr)
                         continue
 
-                    names.add(name)
+                    data['names'].add(name)
                     date = parsed_line['time_received_datetimeobj'].date()
                     if 'request_header_referer' in parsed_line:
                         referer = parsed_line['request_header_referer']
@@ -104,24 +112,25 @@ def parselog(logfile):
                     #print("DEBUG hit:", hit,file=sys.stderr)
 
                     exists = False
-                    if not date in hitsperday[name]:
-                        hitsperday[name][date] = []
+                    if not date in data['hitsperday'][name]:
+                        data['hitsperday'][name][date] = []
                     elif not proxied:
-                        for prevhit in hitsperday[name][date]:
+                        for prevhit in data['hitsperday'][name][date]:
                             if hit == prevhit:
                                 exists = True
                                 break
 
                     if not exists:
                         print("- Adding ", hit, file=sys.stderr)
-                        hitsperday[name][date].append(hit) #register the hit
-                        totalhits[name] += 1
-                        typestats[name][hittype] += 1
-                        platformstats[name][platform] += 1
-                        countrystats[name][country] += 1
+                        data['hitsperday'][name][date].append(hit) #register the hit
+                        data['totalhits'][name] += 1
+                        data['typestats'][name][hittype] += 1
+                        data['platformstats'][name][platform] += 1
+                        data['countrystats'][name][country] += 1
 
+        f.close()
 
-    return names,hitsperday, typestats, platformstats, countrystats,totalhits
+    return data
 
 
 
@@ -155,12 +164,12 @@ def hitsperdaygraph(name, hitsperday):
 
 
 
-def outputreport(names, hitsperday, typestats, platformstats, countrystats,totalhits):
+def outputreport(data):
     out = """<html>
     <head>
         <title>LaMa Software Statistical Report</title>
-        <link rel="stylesheet" href="//cdn.jsdelivr.net/chartist.js/latest/chartist.min.css"></link>
-        <script src="//cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
+        <link rel="stylesheet" href="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css"/>
+        <script src="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
         <style>
             body {
                 font-family: sans;
@@ -236,15 +245,15 @@ def outputreport(names, hitsperday, typestats, platformstats, countrystats,total
     out += "<section>"
     out += "<h2>Total</h2>"
     out += "<table>\n"
-    for name in sorted(names, key= lambda x: -1 * totalhits[x]):
-        out += "<tr><th>" + name + "</th><td>" + str(totalhits[name]) + "</td></tr>\n"
+    for name in sorted(data['names'], key= lambda x: -1 * data['totalhits'][x]):
+        out += "<tr><th>" + name + "</th><td>" + str(data['totalhits'][name]) + "</td></tr>\n"
     out += "</table>\n"
     out += "</section>"
-    for name in sorted(names, key= lambda x: x.lower()):
+    for name in sorted(data['names'], key= lambda x: x.lower()):
         out += "<section>\n"
         out += "        <h2>" + name + "</h2>\n"
         out += "        <h3>" + name + " - Visits per day</h3>"
-        out += hitsperdaygraph(name, hitsperday[name])
+        out += hitsperdaygraph(name, data['hitsperday'][name])
         out += "</section>\n"
     out += """    </body>
 </html>"""
@@ -252,15 +261,23 @@ def outputreport(names, hitsperday, typestats, platformstats, countrystats,total
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Language Machines Software Statistica Analyser", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description="Language Machines Software Statistical Analyser", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     #parser.add_argument('--storeconst',dest='settype',help="", action='store_const',const='somevalue')
-    #parser.add_argument('-f','--dataset', type=str,help="", action='store',default="",required=False)
+    parser.add_argument('-d','--outputdir', type=str,help="Path to output directory", action='store',default="./",required=False)
     #parser.add_argument('-i','--number',dest="num", type=int,help="", action='store',default="",required=False)
-    parser.add_argument('logfile', type=str, help='Apache access log')
+    parser.add_argument('logfiles', nargs='+', help='Apache access logs')
     args = parser.parse_args()
 
-    names,hitsperday,typestats,platformstats,countrystats,totalhits = parselog(args.logfile)
-    print(outputreport(names,hitsperday,typestats,platformstats,countrystats,totalhits))
+    outputdir = args.outputdir
+    if outputdir[-1] != '/': outputdir += '/'
+
+    data = parselog(args.logfiles)
+    #with open(outputdir + '/lamastats.json','w',encoding='utf-8') as f:
+    #    json.dump(data, f)
+    with open(outputdir + '/lamastats.html','w',encoding='utf-8') as f:
+        print(outputreport(data), file=f)
+
+
 
 if __name__ == '__main__':
     main()
