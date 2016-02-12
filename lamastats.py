@@ -155,7 +155,7 @@ def parseclamlog(logfiles):
                 #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
                 if parsed_line['request_method'] == 'PUT' and parsed_line['status'] == '201':
                     #found a 'project created' entry
-                    fields = parsed_line['request_url'].strip('/').split('/')[0]
+                    fields = parsed_line['request_url'].strip('/').split('/')
                     if len(fields) != 2:
                         continue
                     name = fields[0] 
