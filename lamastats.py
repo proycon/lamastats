@@ -31,8 +31,9 @@ def parselog(logfiles):
     }
     line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
     for logfile in logfiles:
+        print("[parselog] Reading " + logfile,file=sys.stderr)
         if logfile[-3:] == '.gz':
-            f = gzip.open(logfile,'r',encoding='utf-8')
+            f = gzip.open(logfile,'rt',encoding='utf-8')
         else:
             f = open(logfile,'r',encoding='utf-8')
         for line in f:
@@ -143,8 +144,9 @@ def parseclamlog(logfiles):
     }
     line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
     for logfile in logfiles:
+        print("[parseclamlog] Reading " + logfile,file=sys.stderr)
         if logfile[-3:] == '.gz':
-            f = gzip.open(logfile,'r',encoding='utf-8')
+            f = gzip.open(logfile,'rt',encoding='utf-8')
         else:
             f = open(logfile,'r',encoding='utf-8')
         for line in f:
