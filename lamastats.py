@@ -380,7 +380,7 @@ def header(data):
             .legend em {
                 font-size: 70%;
             }
-            th { text-align: left; }
+            th,td { text-align: left; font-family: sans, font-size: 10px;}
             section {
                 background: white;
                 border: 2px #d2de84 solid;
