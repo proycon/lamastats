@@ -155,7 +155,10 @@ def parseclamlog(logfiles):
                 #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
                 if parsed_line['request_method'] == 'PUT' and parsed_line['status'] == '201':
                     #found a 'project created' entry
-                    name = parsed_line['request_url'].strip('/').split('/')[0]
+                    fields = parsed_line['request_url'].strip('/').split('/')[0]
+                    if len(fields) != 2:
+                        continue
+                    name = fields[0] 
                     data['names'].add(name)
                     date = parsed_line['time_received_datetimeobj'].date()
 
@@ -338,7 +341,7 @@ def outputreport(data):
 
 def outputclamreport(data):
     out = header(data)
-    out += "        <h1>CLAM webservice Statistical Report</h1>\n"
+    out += "        <h1>CLAM Webservice Statistical Report</h1>\n"
     out += "<section>"
     out += "<h2>Total</h2>"
     out += "<table>\n"
