@@ -12,7 +12,7 @@ import pygeoip
 gi = pygeoip.GeoIP('GeoIP.dat')
 
 ignoreips = ('77.161.34.157',) #proycon@home
-internalips = ('127.0.0.1', '131.174.30.3',)
+internalips = ('127.0.0.1', '131.174.30.3','131.174.30.4') #localhost, spitfire, applejack
 
 
 def daterange(start_date, end_date):
