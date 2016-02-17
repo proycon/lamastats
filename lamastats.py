@@ -418,11 +418,12 @@ def outputreport(data):
     out += "<h2>Total</h2>"
     out += "<table>\n"
     for name in sorted(data['names'], key= lambda x: -1 * data['totalhits'][x]):
-        out += "<tr><th>" + name + "</th><td>" + str(data['totalhits'][name]) + "</td></tr>\n"
+        out += "<tr><th><a href=\"#name " + name + "\">" + name + "</a></th><td>" + str(data['totalhits'][name]) + "</td></tr>\n"
     out += "</table>\n"
     out += "</section>"
     for name in sorted(data['names'], key= lambda x: x.lower()):
         out += "<section>\n"
+        out += "        <a name=\"" + name + "\"></a>"
         out += "        <h2>" + name + "</h2>\n"
         out += "        <h3>" + name + " - Visits per day</h3>"
         out += hitsperdaygraph(name, data['hitsperday'][name])
@@ -438,11 +439,12 @@ def outputclamreport(data):
     out += "<h2>Total</h2>"
     out += "<table>\n"
     for name in sorted(data['names'], key= lambda x: -1 * data['totalprojects'][x]):
-        out += "<tr><th>" + name + "</th><td>" + str(data['totalprojects'][name]) + "</td></tr>\n"
+        out += "<tr><th><a href=\"#name " + name + "\">" + name + "</a></th><td>" + str(data['totalprojects'][name]) + "</td></tr>\n"
     out += "</table>\n"
     out += "</section>"
     for name in sorted(data['names'], key= lambda x: x.lower()):
         out += "<section>\n"
+        out += "        <a name=\"" + name + "\"></a>"
         out += "        <h2>" + name + "</h2>\n"
         out += "        <h3>" + name + " - New projects per day</h3>"
         out += projectsperdaygraph(name, data['projectsperday'][name], data['projectsperday_internal'][name])
