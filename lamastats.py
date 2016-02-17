@@ -79,9 +79,9 @@ def parselog(logfiles):
                     if bot:
                         continue
 
-                    #ip = parsed_line['remote_host']
-                    #if ip in ignoreips:
-                    #    continue
+                    ip = parsed_line['remote_host']
+                    if ip in ignoreips:
+                        continue
 
                     country = 'unknown'
                     try:
