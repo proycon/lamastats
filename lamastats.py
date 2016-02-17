@@ -418,7 +418,7 @@ def outputreport(data):
     out += "<h2>Total</h2>"
     out += "<table>\n"
     for name in sorted(data['names'], key= lambda x: -1 * data['totalhits'][x]):
-        out += "<tr><th><a href=\"#name " + name + "\">" + name + "</a></th><td>" + str(data['totalhits'][name]) + "</td></tr>\n"
+        out += "<tr><th><a href=\"#" + name + "\">" + name + "</a></th><td>" + str(data['totalhits'][name]) + "</td></tr>\n"
     out += "</table>\n"
     out += "</section>"
     for name in sorted(data['names'], key= lambda x: x.lower()):
@@ -439,7 +439,7 @@ def outputclamreport(data):
     out += "<h2>Total</h2>"
     out += "<table>\n"
     for name in sorted(data['names'], key= lambda x: -1 * data['totalprojects'][x]):
-        out += "<tr><th><a href=\"#name " + name + "\">" + name + "</a></th><td>" + str(data['totalprojects'][name]) + "</td></tr>\n"
+        out += "<tr><th><a href=\"#" + name + "\">" + name + "</a></th><td>" + str(data['totalprojects'][name]) + "</td></tr>\n"
     out += "</table>\n"
     out += "</section>"
     for name in sorted(data['names'], key= lambda x: x.lower()):
