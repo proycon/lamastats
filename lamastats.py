@@ -423,6 +423,9 @@ def header(data):
             h2 {
                 font-variant: small-caps;
             }
+            th.title {
+                color: #939a61;
+            }
 
             /* total */
             .ct-series-a .ct-line,
@@ -551,15 +554,19 @@ def outputclamreport(data):
     return out
 
 
-def toptable(datalist, key, title, n=25):
-    out = "<h3>" + title + "</h3>"
+def toptable(datalist, key, title, n=25, header=True):
+    if header:
+        out = "<h3>" + title + "</h3>"
     out += "<table>\n"
     d = defaultdict(int)
     for hits in datalist.values():
         for hit in hits:
             d[hit[key]] += 1
     total = sum(d.values())
-    out += "<tr><th>Name</th><th>Total</th></tr>"
+    if not header and title:
+        out += "<tr><th class=\"title\">" + title + "</th><th>Total</th></tr>"
+    else:
+        out += "<tr><th>Name</th><th>Total</th></tr>"
     for key, value in list(sorted(d.items(), key= lambda x: -1 * x[1]))[:n]:
         out += "<tr>"
         out += "<th>" + key+ "</th>"
