@@ -507,9 +507,9 @@ def totaltable(data, hits_key='hitsperday', totalhits_key='totalhits'):
         total7 = sum( ( v if isinstance(v,int) else len(v) for k,v in data[hits_key][name].items() if k >= pastdate7 ) )
         total30 = sum( ( v if isinstance(v, int) else len(v) for k,v in data[hits_key][name].items() if k >= pastdate30 ) )
         out += "<td>" + str(total30) + "</td>"
-        out += "<td class=\"avg\">" + str(total30/30) + "</td>"
+        out += "<td class=\"avg\">" + str(round(total30/30,1)) + "</td>"
         out += "<td>" + str(total7) + "</td>"
-        out += "<td class=\"avg\">" + str(total7/7) + "</td>"
+        out += "<td class=\"avg\">" + str(round(total7/7,1)) + "</td>"
         out += "</tr>\n"
     out += "</table>\n"
     return out
