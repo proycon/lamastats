@@ -6,16 +6,39 @@ from collections import defaultdict
 from datetime import timedelta, date, datetime
 import gzip
 import json
+import pickle
 import apache_log_parser
 import pygeoip
+import os
 
 gi = pygeoip.GeoIP('GeoIP.dat')
 
 ignoreips = ('77.161.34.157',) #proycon@home
 internalips = ('127.0.0.1', '131.174.30.3','131.174.30.4') #localhost, spitfire, applejack
 
+class PythonObjectEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (list, dict, str, int, float, bool, type(None))):
+            return JSONEncoder.default(self, obj)
+        elif isinstance(obj, set):
+            return {'_set': list(obj)}
+        elif isinstance(obj, date):
+            return {'_date': obj.strftime('%Y-%m-%d') }
+        else:
+            raise Exception("Unhandled type: ", type(obj))
+
+def PythonObjectDecoder(dct):
+    if '_set' in dct:
+        return set(dct['_set'])
+    if '_date' in dct:
+        return datetime.strptime(dct['_date'], '%Y-%m-%d').date()
+    return dct
 
 def daterange(start_date, end_date):
+    if isinstance(start_date, str):
+        start_date = datetime.strptime(start_date,'%Y-%m-%d').date()
+    if isinstance(end_date, str):
+        end_date = datetime.strptime(end_date,'%Y-%m-%d').date()
     for n in range(int((end_date - start_date).days)+1):
         yield start_date + timedelta(n)
 
@@ -46,8 +69,10 @@ def parselog(logfiles):
         'countrystats': defaultdict(lambda: defaultdict(int)),
         'totalhits': defaultdict(int),
         'lamachine': defaultdict(list),
-        'lamachinetotal': 0
+        'lamachinetotal': 0,
+        'latest': "",
     }
+    latest = data['latest']
     line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
     for logfile in logfiles:
         print("[parselog] Reading " + logfile,file=sys.stderr)
@@ -73,7 +98,7 @@ def parselog(logfiles):
                         print("- skipping invalid lamachinetracker, invalid form/mode/stabledev", file=sys.stderr)
                         continue
 
-                    date = parsed_line['time_received_datetimeobj'].date()
+                    date = parsed_line['time_received_datetimeobj'].date().strftime('%Y-%m-%d')
 
                     useragent, bot = parseuseragent(parsed_line)
                     if bot:
@@ -126,7 +151,14 @@ def parselog(logfiles):
                         continue
 
                     data['names'].add(name)
-                    date = parsed_line['time_received_datetimeobj'].date()
+                    dt = parsed_line['time_received_datetimeobj']
+                    dts = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    date = dt.date().strftime('%Y-%m-%d')
+                    if dts < data['latest']:
+                        continue #already counted
+                    elif dts > latest:
+                        latest = dts
+
                     if 'request_header_referer' in parsed_line:
                         referer = parsed_line['request_header_referer']
                     else:
@@ -200,7 +232,7 @@ def parselog(logfiles):
                         data['countrystats'][name][country] += 1
 
         f.close()
-
+    data['latest'] = latest
     return data
 
 
@@ -210,9 +242,11 @@ def parseclamlog(logfiles):
         'projectsperday_internal': defaultdict(lambda: defaultdict(int)),
         'projectsperday': defaultdict(lambda: defaultdict(int)),
         'totalprojects': defaultdict(int),
+        'latest': "",
     }
     line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
-    for logfile in logfiles:
+    latest = data['latest']
+    for logfile in sorted(logfiles):
         print("[parseclamlog] Reading " + logfile,file=sys.stderr)
         if logfile[-3:] == '.gz':
             f = gzip.open(logfile,'rt',encoding='utf-8')
@@ -229,7 +263,13 @@ def parseclamlog(logfiles):
                         continue
                     name = fields[0] 
                     data['names'].add(name)
-                    date = parsed_line['time_received_datetimeobj'].date()
+                    dt = parsed_line['time_received_datetimeobj']
+                    dts = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    date = dt.date().strftime('%Y-%m-%d')
+                    if dts < data['latest']:
+                        continue #already counted
+                    elif dts > latest:
+                        latest = dts
 
                     ip = parsed_line['remote_host']
                     if ip in ignoreips:
@@ -240,6 +280,7 @@ def parseclamlog(logfiles):
                     data['projectsperday'][name][date] += 1
                     data['totalprojects'][name] += 1
 
+    data['latest'] = latest
     return data
 
 def hitsperdaygraph(name, hitsperday):
@@ -502,8 +543,9 @@ def main():
     if outputdir[-1] != '/': outputdir += '/'
 
     data = parselog(args.logfiles)
-    #with open(outputdir + '/lamastats.json','w',encoding='utf-8') as f:
-    #    json.dump(data, f)
+    with open(outputdir + '/lamastats.json','w',encoding='utf-8') as f:
+        json.dump(data, f, cls=PythonObjectEncoder)
+
     with open(outputdir + '/lamastats.html','w',encoding='utf-8') as f:
         print(outputreport(data), file=f)
     with open(outputdir + '/lamachinestats.html','w',encoding='utf-8') as f:
@@ -512,6 +554,8 @@ def main():
     data = parseclamlog(args.logfiles)
     with open(outputdir + '/clamstats.html','w',encoding='utf-8') as f:
         print(outputclamreport(data), file=f)
+    with open(outputdir + '/clamstats.json','w',encoding='utf-8') as f:
+        json.dump(data, f, cls=PythonObjectEncoder)
 
 
 
