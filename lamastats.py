@@ -470,6 +470,7 @@ def header(data):
                 margin-right: 50px;
                 padding: 10px;
                 margin-bottom: 20px;
+                font-size: 10px;
             }
             #nav {
                 background: #d2de84;
@@ -481,6 +482,10 @@ def header(data):
                 padding: 3px;
                 color: black;
                 font-weight: bold;
+            }
+            td.avg {
+                font-size: 80%;
+                font-style: italic;
             }
         </style>
     </head>
@@ -495,14 +500,16 @@ def totaltable(data, hits_key='hitsperday', totalhits_key='totalhits'):
     pastdate7 = (datetime.now() - timedelta(7)).strftime('%Y-%m-%d')
     pastdate30 = (datetime.now() - timedelta(30)).strftime('%Y-%m-%d')
     out = "<table>\n"
-    out += "<tr><th>Name</th><th>All time</th><th>Last 30 days</th><th>Last 7 days</th></tr>"
+    out += "<tr><th>Name</th><th>All time</th><th>Last 30 days</th><th>Avg per day</th><th>Last 7 days</th><th>Avg per day</th></tr>"
     for name in sorted(data['names'], key= lambda x: -1 * data[totalhits_key][x]):
         out += "<tr><th><a href=\"#" + name + "\">" + name + "</a></th>"
         out += "<td>" + str(data[totalhits_key][name]) + "</td>"
         total7 = sum( ( v if isinstance(v,int) else len(v) for k,v in data[hits_key][name].items() if k >= pastdate7 ) )
         total30 = sum( ( v if isinstance(v, int) else len(v) for k,v in data[hits_key][name].items() if k >= pastdate30 ) )
         out += "<td>" + str(total30) + "</td>"
+        out += "<td class=\"avg\">" + str(total30/30) + "</td>"
         out += "<td>" + str(total7) + "</td>"
+        out += "<td class=\"avg\">" + str(total7/7) + "</td>"
         out += "</tr>\n"
     out += "</table>\n"
     return out
