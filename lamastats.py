@@ -336,6 +336,21 @@ def countinternal(hits):
             count += 1
     return str(count)
 
+def graphlabels(startdate, enddate):
+    out = []
+    for date in daterange(startdate,enddate, True):
+        if date.day == 1:
+            out.append( date.strftime("%d %b") )
+        elif date.day in (10,20):
+            out.append( date.strftime("%d") )
+        else:
+            out.append('.')
+
+    return json.dumps(out)
+
+
+
+
 def hitsperdaygraph(name, hitsperday):
     total = len(hitsperday)
     startdate = date(2016,1,1) #min(hitsperday.keys())
@@ -344,7 +359,7 @@ def hitsperdaygraph(name, hitsperday):
     out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-hitsperday\"></div>\n"
     out += "<script>\n"
     out += "new Chartist.Line('#" +name + "-hitsperday', {\n"
-    out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate, True))) + " ],\n"
+    out += "   labels: " + graphlabels(startdate,enddate) + ",\n"
     out += "   series: [\n"
     out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
     out += "        [" + ",".join((countinternal(hitsperday.get(date,{})) for date in daterange(startdate,enddate))) + " ],\n"
