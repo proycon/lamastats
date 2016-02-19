@@ -464,7 +464,7 @@ def header(data):
             .legend em {
                 font-size: 70%;
             }
-            th,td { text-align: left; font-family: sans, font-size: 10px;}
+            th,td { text-align: left; font-family: sans; font-size: 10px;}
             section {
                 background: white;
                 border: 2px #d2de84 solid;
@@ -487,7 +487,7 @@ def header(data):
                 font-weight: bold;
             }
             td.avg {
-                font-size: 80%;
+                font-size: 85%;
                 font-style: italic;
             }
         </style>
@@ -530,6 +530,8 @@ def outputreport(data):
         out += "        <h2>" + name + "</h2>\n"
         out += "        <h3>" + name + " - Visits per day</h3>"
         out += hitsperdaygraph(name, data['hitsperday'][name])
+        out += toptable(data['hitsperday'][name],"country","Country",6)
+        out += toptable(data['hitsperday'][name],"platform","Platform",6)
         out += "</section>\n"
     out += """    </body>
 </html>"""
