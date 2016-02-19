@@ -494,15 +494,16 @@ def header(data):
 def totaltable(data, hits_key='hitsperday', totalhits_key='totalhits'):
     pastdate7 = (datetime.now() - timedelta(7)).strftime('%Y-%m-%d')
     pastdate30 = (datetime.now() - timedelta(30)).strftime('%Y-%m-%d')
-    total7 = sum( (1 for k in data[hits_key].keys() if k >= pastdate7 ) )
-    total30 = sum( (1 for k in data[hits_key].keys() if k >= pastdate30 ) )
     out = "<table>\n"
-    out += "<tr><th>Name</th><th>All time</th><th>Last 30 days</th></th>Last 7 days</th></tr>"
+    out += "<tr><th>Name</th><th>All time</th><th>Last 30 days</th><th>Last 7 days</th></tr>"
     for name in sorted(data['names'], key= lambda x: -1 * data[totalhits_key][x]):
         out += "<tr><th><a href=\"#" + name + "\">" + name + "</a></th>"
-        out += "<td>" + str(data[totalhits_key][name]) + "</td></tr>\n"
-        out += "<td>" + str(total30) + "</td></tr>\n"
-        out += "<td>" + str(total7) + "</td></tr>\n"
+        out += "<td>" + str(data[totalhits_key][name]) + "</td>"
+        total7 = sum( ( v if isinstance(v,int) else len(v) for k,v in data[hits_key][name].items() if k >= pastdate7 ) )
+        total30 = sum( ( v if isinstance(v, int) else len(v) for k,v in data[hits_key][name].items() if k >= pastdate30 ) )
+        out += "<td>" + str(total30) + "</td>"
+        out += "<td>" + str(total7) + "</td>"
+        out += "</tr>\n"
     out += "</table>\n"
     return out
 
@@ -529,7 +530,7 @@ def outputclamreport(data):
     out += "        <h1>CLAM Webservice Statistical Report</h1>\n"
     out += "<section>"
     out += "<h2>Total</h2>"
-    out += totaltable(data,'projectperday','totalprojects')
+    out += totaltable(data,'projectsperday','totalprojects')
     out += "</section>"
     for name in sorted(data['names'], key= lambda x: x.lower()):
         out += "<section>\n"
