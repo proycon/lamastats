@@ -593,6 +593,7 @@ def outputlamachinereport(data):
     out += toptable(data['lamachine'], 'os','OS (type)')
     out += toptable(data['lamachine'], 'distrib','OS (exact)')
     out += toptable(data['lamachine'], 'pythonversion','Python Version')
+    out += toptable(data['lamachine'], 'country','Country')
     out += "</section>"
     out += "<section>\n"
     out += "        <h3>Installations/updates per day</h3>"
