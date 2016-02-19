@@ -347,9 +347,9 @@ def hitsperdaygraph(name, hitsperday):
     out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate, True))) + " ],\n"
     out += "   series: [\n"
     out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
-    out += "        [" + ",".join((countinternal(hitsperday.get(date,{})) for date in daterange(startdate,enddate))) + " ]\n"
+    out += "        [" + ",".join((countinternal(hitsperday.get(date,{})) for date in daterange(startdate,enddate))) + " ],\n"
     out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'ghpages') for date in daterange(startdate,enddate))) + " ],\n"
-    out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'github') for date in daterange(startdate,enddate))) + " ],\n"
+    out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'github') for date in daterange(startdate,enddate))) + " ]\n"
     out += "   ]\n"
     out += "},{ axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
     out += "</script>\n"
@@ -360,7 +360,7 @@ def installsperdaygraph(hitsperday):
     startdate = date(2016,1,1) #min(hitsperday.keys())
     enddate = datetime.now().date()
     out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong>, <strong><span style=\"color: red\">Radboud internal</span></strong></div>"
-    out = "<div class=\"ct-chart ct-double-octave\" id=\"lamachine-installsperday\"></div>\n"
+    out += "<div class=\"ct-chart ct-double-octave\" id=\"lamachine-installsperday\"></div>\n"
     out += "<script>\n"
     out += "new Chartist.Line('#lamachine-installsperday', {\n"
     out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate,True))) + " ],\n"
