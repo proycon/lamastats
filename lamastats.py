@@ -340,7 +340,7 @@ def hitsperdaygraph(name, hitsperday):
     total = len(hitsperday)
     startdate = date(2016,1,1) #min(hitsperday.keys())
     enddate = datetime.now().date()
-    out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: green\">Github</span></strong> <em>(not unique!)</em>, <strong><span style=\"color: blue\">Website</span></strong>, <strong><span style=\"color: red\">Radboud internal</span></strong></div>"
+    out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: green\">Github</span></strong> <em>(not unique! no source info!)</em>, <strong><span style=\"color: blue\">Website</span></strong>, <strong><span style=\"color: red\">Radboud internal</span></strong></div>"
     out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-hitsperday\"></div>\n"
     out += "<script>\n"
     out += "new Chartist.Line('#" +name + "-hitsperday', {\n"
