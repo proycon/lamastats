@@ -6,15 +6,21 @@ from collections import defaultdict
 from datetime import timedelta, date, datetime
 import gzip
 import json
-import pickle
 import apache_log_parser
 import pygeoip
 import os
 
 gi = pygeoip.GeoIP('GeoIP.dat')
 
-ignoreips = ('77.161.34.157',) #proycon@home
+ignoreips = ('77.161.34.157','84.24.101.84', ) #proycon@home, kobus@home, 
 internalips = ('127.0.0.1', '131.174.30.3','131.174.30.4') #localhost, spitfire, applejack
+internalblocks = ('131.174.',)
+
+def ininternalblock(ip):
+    for internalblock in internalblocks:
+        if ip.startswith(internalblock):
+            return True
+    return False
 
 class PythonObjectEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -144,7 +150,8 @@ def parselog(logfiles):
                         'ip': ip,
                         'os': os_id,
                         'distrib': distrib_id + ' ' + distrib_release,
-                        'country':country
+                        'country':country,
+                        'internal': ip in internalips or ininternalblock(ip),
                     }
                     #print("DEBUG hit:", hit,file=sys.stderr)
 
@@ -198,8 +205,6 @@ def parselog(logfiles):
                         hittype = 'github'
                         ip = '0.0.0.0' #irrelevant, proxied
                         proxied = True
-                    elif referer.find("pypi.python.org") != -1:
-                        hittype = 'pypi'
                     elif referer.find("github.io") != -1:
                         hittype = 'ghpages'
                     else:
@@ -233,7 +238,8 @@ def parselog(logfiles):
                         'ip': ip,
                         'unique': hittype not in ('github',),
                         'platform': platform,
-                        'country':country
+                        'country':country,
+                        'internal': ip in internalips or ininternalblock(ip),
                     }
                     #print("DEBUG hit:", hit,file=sys.stderr)
 
@@ -304,7 +310,7 @@ def parseclamlog(logfiles):
                     if ip in ignoreips:
                         continue
 
-                    if ip in internalips:
+                    if ip in internalips or ininternalblock(ip):
                         data['projectsperday_internal'][name][date] += 1
                     newhits += 1
                     data['projectsperday'][name][date] += 1
@@ -316,50 +322,51 @@ def parseclamlog(logfiles):
     print("[parseclamlog] " + str(newhits) + " new hits",file=sys.stderr)
     return data
 
-def hitsperdaygraph(name, hitsperday):
-    def counttype(hits, hittype):
-        count = 0
-        for hit in hits:
-            if hit['type'] == hittype:
-                count += 1
-        return str(count)
+def counttype(hits, hittype):
+    count = 0
+    for hit in hits:
+        if hit['type'] == hittype:
+            count += 1
+    return str(count)
 
+def countinternal(hits):
+    count = 0
+    for hit in hits:
+        if hit['internal']:
+            count += 1
+    return str(count)
+
+def hitsperdaygraph(name, hitsperday):
     total = len(hitsperday)
     startdate = date(2016,1,1) #min(hitsperday.keys())
     enddate = datetime.now().date()
-    out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">Github</span></strong> <em>(not unique!)</em>, <strong><span style=\"color: blue\">Website</span></strong>, <strong><span style=\"color: green\">Python Package Index</span></strong></div>"
+    out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: green\">Github</span></strong> <em>(not unique!)</em>, <strong><span style=\"color: blue\">Website</span></strong>, <strong><span style=\"color: red\">Radboud internal</span></strong></div>"
     out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-hitsperday\"></div>\n"
     out += "<script>\n"
     out += "new Chartist.Line('#" +name + "-hitsperday', {\n"
     out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate, True))) + " ],\n"
     out += "   series: [\n"
     out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
-    out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'github') for date in daterange(startdate,enddate))) + " ],\n"
+    out += "        [" + ",".join((countinternal(hitsperday.get(date,{})) for date in daterange(startdate,enddate))) + " ]\n"
     out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'ghpages') for date in daterange(startdate,enddate))) + " ],\n"
-    out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'pypi') for date in daterange(startdate,enddate))) + " ]\n"
+    out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'github') for date in daterange(startdate,enddate))) + " ],\n"
     out += "   ]\n"
     out += "},{ axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
     out += "</script>\n"
     return out
 
 def installsperdaygraph(hitsperday):
-    def counttype(hits, hittype):
-        count = 0
-        for hit in hits:
-            if hit['type'] == hittype:
-                count += 1
-        return str(count)
-
     total = len(hitsperday)
     startdate = date(2016,1,1) #min(hitsperday.keys())
     enddate = datetime.now().date()
-    #out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">Virtualenv</span></strong>, <strong><span style=\"color: blue\">Website</span></strong>, <strong><span style=\"color: green\"></strong></div>"
+    out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong>, <strong><span style=\"color: red\">Radboud internal</span></strong></div>"
     out = "<div class=\"ct-chart ct-double-octave\" id=\"lamachine-installsperday\"></div>\n"
     out += "<script>\n"
     out += "new Chartist.Line('#lamachine-installsperday', {\n"
     out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate,True))) + " ],\n"
     out += "   series: [\n"
     out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
+    out += "        [" + ",".join((countinternal(hitsperday.get(date,{})) for date in daterange(startdate,enddate))) + " ]\n"
     out += "   ]\n"
     out += "},{ axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
     out += "</script>\n"
@@ -437,7 +444,7 @@ def header(data):
                 stroke: blue;
                 stroke-width: 2px;
             }
-            /*pypi */
+            /* internal */
             .ct-series-d .ct-line,
             .ct-series-d .ct-point {
                 stroke: green;
@@ -526,9 +533,6 @@ def outputclamreport(data):
     out += """    </body>
 </html>"""
     return out
-
-def countkey(l, key):
-    return sum(x.get(key,0) for x in d)
 
 
 def toptable(datalist, key, title, n=25):
