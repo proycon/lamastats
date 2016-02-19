@@ -490,6 +490,9 @@ def header(data):
                 font-size: 85%;
                 font-style: italic;
             }
+            div.tablebox {
+                float: right;
+            }
         </style>
     </head>
     <body>
@@ -529,9 +532,9 @@ def outputreport(data):
         out += "        <a name=\"" + name + "\"></a>"
         out += "        <h2>" + name + "</h2>\n"
         out += "        <h3>" + name + " - Visits per day</h3>"
+        out += "<div class=\"tablebox\">" + toptable(data['hitsperday'][name],"country","Country",10, False) + "</div>"
+        out += "<div class=\"tablebox\">" + toptable(data['hitsperday'][name],"platform","Platform",10, False) + "</div>"
         out += hitsperdaygraph(name, data['hitsperday'][name])
-        out += toptable(data['hitsperday'][name],"country","Country",6)
-        out += toptable(data['hitsperday'][name],"platform","Platform",6)
         out += "</section>\n"
     out += """    </body>
 </html>"""
@@ -559,6 +562,8 @@ def outputclamreport(data):
 def toptable(datalist, key, title, n=25, header=True):
     if header:
         out = "<h3>" + title + "</h3>"
+    else:
+        out = ""
     out += "<table>\n"
     d = defaultdict(int)
     for hits in datalist.values():
