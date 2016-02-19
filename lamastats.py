@@ -34,13 +34,17 @@ def PythonObjectDecoder(dct):
         return datetime.strptime(dct['_date'], '%Y-%m-%d').date()
     return dct
 
-def daterange(start_date, end_date):
+def daterange(start_date, end_date, raw = False):
     if isinstance(start_date, str):
         start_date = datetime.strptime(start_date,'%Y-%m-%d').date()
     if isinstance(end_date, str):
         end_date = datetime.strptime(end_date,'%Y-%m-%d').date()
     for n in range(int((end_date - start_date).days)+1):
-        yield start_date + timedelta(n)
+        if raw:
+            yield start_date + timedelta(n)
+        else:
+            d = start_date + timedelta(n)
+            yield d.strftime('%Y-%m-%d')
 
 
 def parseuseragent(parsed_line):
@@ -60,6 +64,16 @@ def parseuseragent(parsed_line):
         bot = True
     return useragent, bot
 
+def loaddata(filename, data):
+    if os.path.exists(filename):
+        print("Loading previous data from " + filename,file=sys.stderr)
+        loadeddata = json.load(open(filename,'r',encoding='utf-8'),object_hook=PythonObjectDecoder)
+        for key in loadeddata.keys():
+            if isinstance(data[key], dict):
+                data[key].update(loadeddata[key]) #update preserving the defaultdict
+            else:
+                data[key] = loadeddata[key]
+
 def parselog(logfiles):
     data = {
         'names': set(),
@@ -72,8 +86,10 @@ def parselog(logfiles):
         'lamachinetotal': 0,
         'latest': "",
     }
+    loaddata('lamastats.json', data)
     latest = data['latest']
     line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
+    newhits = 0
     for logfile in logfiles:
         print("[parselog] Reading " + logfile,file=sys.stderr)
         if logfile[-3:] == '.gz':
@@ -98,7 +114,13 @@ def parselog(logfiles):
                         print("- skipping invalid lamachinetracker, invalid form/mode/stabledev", file=sys.stderr)
                         continue
 
-                    date = parsed_line['time_received_datetimeobj'].date().strftime('%Y-%m-%d')
+                    dt = parsed_line['time_received_datetimeobj']
+                    dts = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    date = dt.date().strftime('%Y-%m-%d')
+                    if dts < data['latest']:
+                        continue #already counted
+                    elif dts > latest:
+                        latest = dts
 
                     useragent, bot = parseuseragent(parsed_line)
                     if bot:
@@ -136,6 +158,7 @@ def parselog(logfiles):
 
                     if not exists:
                         print("- Adding LaMachine hit: ", hit, file=sys.stderr)
+                        newhits += 1
                         data['lamachine'][date].append(hit)
                         data['lamachinetotal'] += 1
 
@@ -169,7 +192,7 @@ def parselog(logfiles):
 
                     proxied = False
                     useragent, bot = parseuseragent(parsed_line)
-                    if bot: 
+                    if bot:
                         continue
                     if useragent.find("Camo Asset Proxy") != -1:
                         hittype = 'github'
@@ -224,6 +247,7 @@ def parselog(logfiles):
                                 break
 
                     if not exists:
+                        newhits += 1
                         print("- Adding ", hit, file=sys.stderr)
                         data['hitsperday'][name][date].append(hit) #register the hit
                         data['totalhits'][name] += 1
@@ -233,6 +257,9 @@ def parselog(logfiles):
 
         f.close()
     data['latest'] = latest
+    with open('lamastats.json','w',encoding='utf-8') as f:
+        json.dump(data, f, cls=PythonObjectEncoder)
+    print("[parselog] " + str(newhits) + " new hits",file=sys.stderr)
     return data
 
 
@@ -244,8 +271,10 @@ def parseclamlog(logfiles):
         'totalprojects': defaultdict(int),
         'latest': "",
     }
+    loaddata('clamstats.json', data)
     line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
     latest = data['latest']
+    newhits = 0
     for logfile in sorted(logfiles):
         print("[parseclamlog] Reading " + logfile,file=sys.stderr)
         if logfile[-3:] == '.gz':
@@ -261,7 +290,7 @@ def parseclamlog(logfiles):
                     fields = parsed_line['request_url'].strip('/').split('/')
                     if len(fields) != 2:
                         continue
-                    name = fields[0] 
+                    name = fields[0]
                     data['names'].add(name)
                     dt = parsed_line['time_received_datetimeobj']
                     dts = dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -277,10 +306,14 @@ def parseclamlog(logfiles):
 
                     if ip in internalips:
                         data['projectsperday_internal'][name][date] += 1
+                    newhits += 1
                     data['projectsperday'][name][date] += 1
                     data['totalprojects'][name] += 1
 
     data['latest'] = latest
+    with open('clamstats.json','w',encoding='utf-8') as f:
+        json.dump(data, f, cls=PythonObjectEncoder)
+    print("[parseclamlog] " + str(newhits) + " new hits",file=sys.stderr)
     return data
 
 def hitsperdaygraph(name, hitsperday):
@@ -298,7 +331,7 @@ def hitsperdaygraph(name, hitsperday):
     out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-hitsperday\"></div>\n"
     out += "<script>\n"
     out += "new Chartist.Line('#" +name + "-hitsperday', {\n"
-    out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate))) + " ],\n"
+    out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate, True))) + " ],\n"
     out += "   series: [\n"
     out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
     out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'github') for date in daterange(startdate,enddate))) + " ],\n"
@@ -324,7 +357,7 @@ def installsperdaygraph(hitsperday):
     out = "<div class=\"ct-chart ct-double-octave\" id=\"lamachine-installsperday\"></div>\n"
     out += "<script>\n"
     out += "new Chartist.Line('#lamachine-installsperday', {\n"
-    out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate))) + " ],\n"
+    out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate,True))) + " ],\n"
     out += "   series: [\n"
     out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
     out += "   ]\n"
@@ -347,7 +380,7 @@ def projectsperdaygraph(name, projectsperday, projectsperday_internal):
     out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-projectsperday\"></div>\n"
     out += "<script>\n"
     out += "new Chartist.Line('#" +name + "-projectsperday', {\n"
-    out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate))) + " ],\n"
+    out += "   labels: [" + ",".join(('"' +date.strftime("%d-%m")+'"' if date.day in (1,5,10,15,20,25) else '""' for date in daterange(startdate,enddate, True))) + " ],\n"
     out += "   series: [\n"
     out += "        [" + ",".join((str(projectsperday.get(date,0)) for date in daterange(startdate,enddate))) + " ],\n"
     out += "        [" + ",".join((str(projectsperday_internal.get(date,0)) for date in daterange(startdate,enddate))) + " ],\n"
@@ -543,8 +576,6 @@ def main():
     if outputdir[-1] != '/': outputdir += '/'
 
     data = parselog(args.logfiles)
-    with open(outputdir + '/lamastats.json','w',encoding='utf-8') as f:
-        json.dump(data, f, cls=PythonObjectEncoder)
 
     with open(outputdir + '/lamastats.html','w',encoding='utf-8') as f:
         print(outputreport(data), file=f)
