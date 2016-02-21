@@ -315,6 +315,7 @@ def parseclamlog(logfiles):
                         continue
 
                     if ip in internalips or ininternalblock(ip):
+                        if not date in data['projectsperday_internal'][name]: data['projectsperday_internal'][name][date] = 0
                         data['projectsperday_internal'][name][date] += 1
                     newhits += 1
                     if not date in data['projectsperday'][name]: data['projectsperday'][name][date] = 0
