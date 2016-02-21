@@ -256,7 +256,9 @@ def parselog(logfiles):
                         newhits += 1
                         print("- Adding ", hit, file=sys.stderr)
                         data['hitsperday'][name][date].append(hit) #register the hit
+                        if not name in data['totalhits']: data['totalhits'][name] = 0
                         data['totalhits'][name] += 1
+                        if not hittype in data['typestats'][name]: data['typestats'][name][hittype] = 0
                         data['typestats'][name][hittype] += 1
                         if not platform in data['platformstats'][name]: data['platformstats'][name][platform] = 0
                         data['platformstats'][name][platform] += 1
