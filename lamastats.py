@@ -258,7 +258,9 @@ def parselog(logfiles):
                         data['hitsperday'][name][date].append(hit) #register the hit
                         data['totalhits'][name] += 1
                         data['typestats'][name][hittype] += 1
+                        if not platform in data['platformstats'][name]: data['platformstats'][name][platform] = 0
                         data['platformstats'][name][platform] += 1
+                        if not country in data['countrystats'][name]: data['countrystats'][name][country] = 0
                         data['countrystats'][name][country] += 1
 
         f.close()
