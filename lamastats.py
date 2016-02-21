@@ -293,7 +293,10 @@ def parseclamlog(logfiles):
             f = open(logfile,'r',encoding='utf-8')
         for line in f:
             if line.find('PUT') != -1:
-                parsed_line = line_parser(line)
+                try:
+                    parsed_line = line_parser(line)
+                except:
+                    print("ERROR!! UNABLE TO PARSE LINE : " ,line,file=sys.stderr)
                 #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
                 if parsed_line['request_method'] == 'PUT' and parsed_line['status'] == '201':
                     #found a 'project created' entry
