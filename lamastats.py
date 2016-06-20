@@ -593,7 +593,8 @@ def toptable(datalist, key, title, n=25, header=True):
     d = defaultdict(int)
     for hits in datalist.values():
         for hit in hits:
-            d[hit[key]] += 1
+            if key in hit:
+                d[hit[key]] += 1
     total = sum(d.values())
     if not header and title:
         out += "<tr><th class=\"title\">" + title + "</th><th>Total</th></tr>"
