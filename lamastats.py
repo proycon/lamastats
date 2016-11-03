@@ -201,7 +201,7 @@ def parselog(logfiles):
                     useragent, bot = parseuseragent(parsed_line)
                     if bot:
                         continue
-                    if useragent.find("Camo Asset Proxy") != -1:
+                    if useragent.lower().find("camo") != -1 or useragent.lower().find("github") != -1:
                         hittype = 'github'
                         ip = '0.0.0.0' #irrelevant, proxied
                         proxied = True
