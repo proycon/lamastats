@@ -267,8 +267,18 @@ def parselog(logfiles):
 
         f.close()
     data['latest'] = latest
-    with open('lamastats.json','w',encoding='utf-8') as f:
+
+    #sometimes writing breaks (not sure if due to script abortion), so we first buffer to a file, check integrity and then move it to the final place
+    with open('lamastats.json.new','w',encoding='utf-8') as f:
         json.dump(data, f, cls=PythonObjectEncoder)
+    #verify integrity
+    with open('lamastats.json.new','r',encoding='utf-8') as f:
+        try:
+            json.load(f)
+            os.rename('lamastats.json.new', 'lamastats.json')
+        except:
+            print("[parselog] lamastats.json INTEGRITY CHECK FAILED!",file=sys.stderr)
+
     print("[parselog] " + str(newhits) + " new hits",file=sys.stderr)
     return data
 
@@ -327,8 +337,16 @@ def parseclamlog(logfiles):
                     data['totalprojects'][name] += 1
 
     data['latest'] = latest
-    with open('clamstats.json','w',encoding='utf-8') as f:
+    #sometimes writing breaks (not sure if due to script abortion), so we first buffer to a file, check integrity and then move it to the final place
+    with open('clamstats.json.new','w',encoding='utf-8') as f:
         json.dump(data, f, cls=PythonObjectEncoder)
+    #verify integrity
+    with open('clamstats.json.new','r',encoding='utf-8') as f:
+        try:
+            json.load(f)
+            os.rename('clamstats.json.new', 'clamstats.json')
+        except:
+            print("[parselog] clamstats.json INTEGRITY CHECK FAILED!",file=sys.stderr)
     print("[parseclamlog] " + str(newhits) + " new hits",file=sys.stderr)
     return data
 
@@ -650,9 +668,16 @@ def main():
     data = parseclamlog(args.logfiles)
     with open(outputdir + '/clamstats.html','w',encoding='utf-8') as f:
         print(outputclamreport(data), file=f)
-    with open(outputdir + '/clamstats.json','w',encoding='utf-8') as f:
+    #sometimes writing breaks (not sure if due to script abortion), so we first buffer to a file, check integrity and then move it to the final place
+    with open('clamstats.json.new','w',encoding='utf-8') as f:
         json.dump(data, f, cls=PythonObjectEncoder)
-
+    #verify integrity
+    with open('clamstats.json.new','r',encoding='utf-8') as f:
+        try:
+            json.load(f)
+            os.rename('clamstats.json.new', 'clamstats.json')
+        except:
+            print("[parselog] clamstats.json INTEGRITY CHECK FAILED!",file=sys.stderr)
 
 
 if __name__ == '__main__':
