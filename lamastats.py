@@ -311,7 +311,7 @@ def parseclamlog(logfiles):
                 if parsed_line['request_method'] == 'PUT' and parsed_line['status'] == '201':
                     #found a 'project created' entry
                     fields = parsed_line['request_url'].strip('/').split('/')
-                    if len(fields) != 2:
+                    if len(fields) != 2 or line.find('lamawebcheck') != -1:
                         continue
                     name = fields[0]
                     data['names'].add(name)
