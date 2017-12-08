@@ -12,7 +12,7 @@ import os
 
 gi = pygeoip.GeoIP('GeoIP.dat')
 
-ignoreips = ('77.161.34.157','84.24.101.84', ) #proycon@home, kobus@home, 
+ignoreips = ('77.161.34.157','84.24.101.84', ) #proycon@home, kobus@home,
 internalips = ('127.0.0.1', '131.174.30.3','131.174.30.4') #localhost, spitfire, applejack
 internalblocks = ('131.174.',)
 
@@ -444,8 +444,8 @@ def header(data):
     return """<html>
     <head>
         <title>LaMa Software Statistical Report</title>
-        <link rel="stylesheet" href="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css"/>
-        <script src="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css"/>
+        <script src="https://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
         <style>
             body {
                 font-family: sans;
