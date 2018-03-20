@@ -116,9 +116,9 @@ def parselog(logfiles):
                         print("- skipping invalid lamachinetracker: " + "/".join(args), file=sys.stderr)
                         continue
 
-                    if form not in ('virtualenv','docker','vagrants') or mode not in ('new','update') or stabledev not in ('stable','dev'):
-                        print("- skipping invalid lamachinetracker, invalid form/mode/stabledev", file=sys.stderr)
-                        continue
+                    #if form not in ('virtualenv','docker','vagrants') or mode not in ('new','update') or stabledev not in ('stable','dev'):
+                    #    print("- skipping invalid lamachinetracker, invalid form/mode/stabledev", file=sys.stderr)
+                    #    continue
 
                     dt = parsed_line['time_received_datetimeobj']
                     dts = dt.strftime('%Y-%m-%d %H:%M:%S')
