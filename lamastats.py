@@ -387,13 +387,16 @@ def graphlabels(startdate, enddate):
     return json.dumps(out)
 
 
+def startdates():
+    for startdate, label in ( (datetime.now() - timedelta(31) , "Past month"),( datetime.now() - timedelta(365), "Past year"), (date(2016,1,1), "All time") ):
+        yield startdate, label
 
 
 def hitsperdaygraph(name, hitsperday):
     total = len(hitsperday)
     enddate = datetime.now().date()
     out = ""
-    for i, (startdate, label) in enumerate(( (date(datetime.now().year, datetime.now().month,1), "This month"),(date(datetime.now().year,1,1), "This year"), (date(2016,1,1), "All time") )):
+    for i, (startdate, label) in enumerate(startdates):
         dates = daterange(startdate,enddate)
         divisor = 1
         out +=  "<h4>" + label + "</h4>\n"
@@ -416,7 +419,7 @@ def installsperdaygraph(hitsperday):
     total = len(hitsperday)
     enddate = datetime.now().date()
     out = ""
-    for i, (startdate, label) in enumerate(( (date(datetime.now().year, datetime.now().month,1), "This month"),(date(datetime.now().year,1,1), "This year"), (date(2016,1,1), "All time") )):
+    for i, (startdate, label) in enumerate(startdates):
         dates = daterange(startdate,enddate)
         labels = graphlabels(startdate, enddate)
         divisor = 1
@@ -445,7 +448,7 @@ def projectsperdaygraph(name, projectsperday, projectsperday_internal):
     total = len(projectsperday)
     enddate = datetime.now().date()
     out = ""
-    for i, (startdate, label) in enumerate(( (date(datetime.now().year, datetime.now().month,1), "This month"),(date(datetime.now().year,1,1), "This year"), (date(2016,1,1), "All time") )):
+    for i, (startdate, label) in enumerate(startdates):
         dates = daterange(startdate,enddate)
         labels = graphlabels(startdate, enddate)
         divisor = 1
