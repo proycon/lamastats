@@ -352,6 +352,7 @@ def parseclamlog(logfiles):
     print("[parseclamlog] " + str(newhits) + " new hits",file=sys.stderr)
     return data
 
+
 def counttype(hits, hittype):
     count = 0
     for hit in hits:
@@ -390,7 +391,7 @@ def graphlabels(startdate, enddate):
 
 
 def startdates():
-    for startdate, label in ( (date.now() - timedelta(31) , "Past month"),( date.now() - timedelta(365), "Past year"), (date(2016,1,1), "All time") ):
+    for startdate, label in ( (date.today() - timedelta(31) , "Past month"),( date.today() - timedelta(365), "Past year"), (date(2016,1,1), "All time") ):
         yield startdate, label
 
 
