@@ -363,7 +363,7 @@ def parseflatlog(logfile):
     loaddata('flatstats.json', data)
     latest = data['latest']
     newhits = 0
-    print("[parseflatlamlog] Reading " + logfile,file=sys.stderr)
+    print("[parseflatlog] Reading " + logfile,file=sys.stderr)
     if logfile[-3:] == '.gz':
         f = gzip.open(logfile,'rt',encoding='utf-8')
     else:
