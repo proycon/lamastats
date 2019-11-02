@@ -447,6 +447,7 @@ def projectsperdaygraph(name, projectsperday, projectsperday_internal):
     out = ""
     for i, (startdate, label) in enumerate(( (date(datetime.now().year, datetime.now().month,1), "This month"),(date(datetime.now().year,1,1), "This year"), (date(2016,1,1), "All time") )):
         dates = daterange(startdate,enddate)
+        labels = graphlabels(startdate, enddate)
         divisor = 1
         out +=  "<h4>" + label + "</h4>\n"
         out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total new projects per day</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">By internal sources</span></strong></div>"
