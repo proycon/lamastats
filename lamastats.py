@@ -378,7 +378,9 @@ def graphlabels(startdate, enddate):
             elif len(dates) >= 365:
                 out.append( date.strftime("%b") )
             else:
-                out.append( date.strftime("%d %b") )
+                out.append( date.strftime("%-d %b") )
+        elif len(dates) <= 32:
+            out.append( date.strftime("%-d") )
         elif date.day in (10,20) and len(dates) <= 60:
             out.append( date.strftime("%d") )
         else:
@@ -396,7 +398,7 @@ def hitsperdaygraph(name, hitsperday):
     total = len(hitsperday)
     enddate = datetime.now().date()
     out = ""
-    for i, (startdate, label) in enumerate(startdates):
+    for i, (startdate, label) in enumerate(startdates()):
         dates = daterange(startdate,enddate)
         divisor = 1
         out +=  "<h4>" + label + "</h4>\n"
@@ -419,7 +421,7 @@ def installsperdaygraph(hitsperday):
     total = len(hitsperday)
     enddate = datetime.now().date()
     out = ""
-    for i, (startdate, label) in enumerate(startdates):
+    for i, (startdate, label) in enumerate(startdates()):
         dates = daterange(startdate,enddate)
         labels = graphlabels(startdate, enddate)
         divisor = 1
@@ -448,7 +450,7 @@ def projectsperdaygraph(name, projectsperday, projectsperday_internal):
     total = len(projectsperday)
     enddate = datetime.now().date()
     out = ""
-    for i, (startdate, label) in enumerate(startdates):
+    for i, (startdate, label) in enumerate(startdates()):
         dates = daterange(startdate,enddate)
         labels = graphlabels(startdate, enddate)
         divisor = 1
@@ -549,6 +551,9 @@ def header(data):
                 background: #d2de84;
                 color: white;
                 text-align: center;
+                font-size: 14px;
+                padding-top: 5px;
+                padding-bottom: 5px;
             }
             #nav a, #nav a:link, #nav a:active {
                 margin: 0px;
