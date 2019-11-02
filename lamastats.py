@@ -770,7 +770,7 @@ def outputflatreport(data):
         labels = graphlabels(startdate, enddate)
         divisor = 1
         out +=  "<h4>" + label + "</h4>\n"
-        out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\"> read per day</span></strong></div>"
+        out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\"> annotations per day</span></strong></div>"
         out += "<div class=\"ct-chart ct-double-octave\" id=\"flat-editsperday-" + str(i) + "\"></div>\n"
         out += "<script>\n"
         out += "new Chartist.Line('#flat-editsperday-" + str(i) + "', {\n"
