@@ -390,7 +390,7 @@ def graphlabels(startdate, enddate):
 
 
 def startdates():
-    for startdate, label in ( (datetime.now() - timedelta(31) , "Past month"),( datetime.now() - timedelta(365), "Past year"), (date(2016,1,1), "All time") ):
+    for startdate, label in ( (date.now() - timedelta(31) , "Past month"),( date.now() - timedelta(365), "Past year"), (date(2016,1,1), "All time") ):
         yield startdate, label
 
 
