@@ -82,6 +82,7 @@ def loaddata(filename, data):
             else:
                 data[key] = loadeddata[key]
 
+
 def parselog(logfiles):
     data = {
         'names': set(),
@@ -352,6 +353,59 @@ def parseclamlog(logfiles):
     print("[parseclamlog] " + str(newhits) + " new hits",file=sys.stderr)
     return data
 
+def parseflatlog(logfile):
+    data = {
+        'readdocumentsperday': defaultdict(int),
+        'writedocumentsperday': defaultdict(int),
+        'editsperday': defaultdict(int),
+        'latest': "",
+    }
+    loaddata('flatstats.json', data)
+    latest = data['latest']
+    newhits = 0
+    print("[parseflatlamlog] Reading " + logfile,file=sys.stderr)
+    if logfile[-3:] == '.gz':
+        f = gzip.open(logfile,'rt',encoding='utf-8')
+    else:
+        f = open(logfile,'r',encoding='utf-8')
+    for line in f:
+        if len(line) > 22 and line[20] == "-":
+            date = line[:10] #date string only
+            dts = line[:19] #full date time string
+            if dts < data['latest']:
+                continue #already counted
+            elif dts > latest:
+                latest = dts
+            msg = line[22:]
+            if msg.startswith("Loading "):
+                newhits += 1
+                if not date in data['readdocumentsperday']: data['readdocumentsperday'][date] = 0
+                data['readdocumentsperday'][date] += 1
+            elif msg.startswith("Saving "):
+                newhits += 1
+                if not date in data['wrotedocumentsperday']: data['wrotedocumentsperday'][date] = 0
+                data['wrotedocumentsperday'][date] += 1
+            elif msg.startswith("[QUERY ON ") and (msg.find("EDIT ") != -1 or msg.find("ADD ") != -1 or msg.find("DELETE ") != -1):
+                newhits += 1
+                if not date in data['editsperday']: data['editsperday'][date] = 0
+                data['editsperday'][date] += 1
+    data['latest'] = latest
+    #sometimes writing breaks (not sure if due to script abortion), so we first buffer to a file, check integrity and then move it to the final place
+    with open('flatstats.json.new','w',encoding='utf-8') as f:
+        json.dump(data, f, cls=PythonObjectEncoder)
+    #verify integrity
+    with open('flatstats.json.new','r',encoding='utf-8') as f:
+        try:
+            json.load(f)
+            os.rename('flatstats.json.new', 'flatstats.json')
+        except:
+            print("[parselog] flatstats.json INTEGRITY CHECK FAILED!",file=sys.stderr)
+    print("[parseflatlog] " + str(newhits) + " new hits",file=sys.stderr)
+    return data
+
+
+
+
 
 def counttype(hits, hittype):
     count = 0
@@ -573,7 +627,7 @@ def header(data):
     </head>
     <body>
     <div id="nav">
-     [ <a href="lamastats.html">Software Statistics</a> | <a href="clamstats.html">Webservice Statistics</a> | <a href="lamachinestats.html">LaMachine Statistics</a> ]
+     [ <a href="lamastats.html">Software Statistics</a> | <a href="clamstats.html">Webservice Statistics</a> | <a href="flatstats.html">FLAT Statistics</a> | <a href="lamachinestats.html">LaMachine Statistics</a> ]
     </div>
     """
 
@@ -681,10 +735,62 @@ def outputlamachinereport(data):
 </html>"""
     return out
 
+def outputflatreport(data):
+    out = header(data)
+    out += "        <h1>FLAT Statistical Report</h1>\n"
+    out += "<section>"
+    out += "<section>\n"
+    out += "        <h3>Documents per day</h3>"
+    total = len(data['readdocumentsperday'])
+    enddate = datetime.now().date()
+    for i, (startdate, label) in enumerate(startdates()):
+        dates = daterange(startdate,enddate)
+        labels = graphlabels(startdate, enddate)
+        divisor = 1
+        out +=  "<h4>" + label + "</h4>\n"
+        out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Documents read per day</span></strong> , <strong><span style=\"color: red\">Documents written per day</span></strong></div>"
+        out += "<div class=\"ct-chart ct-double-octave\" id=\"flat-documentsperday-" + str(i) + "\"></div>\n"
+        out += "<script>\n"
+        out += "new Chartist.Line('#flat-documentsperday-" + str(i) + "', {\n"
+        out += "   labels: " + labels + ",\n"
+        out += "   series: [\n"
+        out += "        [" + ",".join((str(data['readdocumentsperday'].get(datestr(date),0)) for date in dates)) + " ],\n"
+        out += "        [" + ",".join((str(data['wrotedocumentsperday'].get(datestr(date),0)) for date in dates)) + " ],\n"
+        out += "   ]\n"
+        out += "},{ axisX: { divisor: " + str(divisor) + ", scaleMinSpace: 20 }, axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
+        out += "</script>\n"
+
+    out += "</section>\n"
+    out += "<section>\n"
+    out += "        <h3>Edits/Annotations per day</h3>"
+    total = len(data['readdocumentsperday'])
+    enddate = datetime.now().date()
+    for i, (startdate, label) in enumerate(startdates()):
+        dates = daterange(startdate,enddate)
+        labels = graphlabels(startdate, enddate)
+        divisor = 1
+        out +=  "<h4>" + label + "</h4>\n"
+        out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\"> read per day</span></strong></div>"
+        out += "<div class=\"ct-chart ct-double-octave\" id=\"flat-editsperday-" + str(i) + "\"></div>\n"
+        out += "<script>\n"
+        out += "new Chartist.Line('#flat-editsperday-" + str(i) + "', {\n"
+        out += "   labels: " + labels + ",\n"
+        out += "   series: [\n"
+        out += "        [" + ",".join((str(data['editsperday'].get(datestr(date),0)) for date in dates)) + " ],\n"
+        out += "   ]\n"
+        out += "},{ axisX: { divisor: " + str(divisor) + ", scaleMinSpace: 20 }, axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
+        out += "</script>\n"
+
+    out += "</section>\n"
+    out += """    </body>
+</html>"""
+    return out
+
 def main():
     parser = argparse.ArgumentParser(description="Language Machines Software Statistical Analyser", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     #parser.add_argument('--storeconst',dest='settype',help="", action='store_const',const='somevalue')
     parser.add_argument('-d','--outputdir', type=str,help="Path to output directory", action='store',default="./",required=False)
+    parser.add_argument('-F','--foliadocservelog', type=str,help="Path to FoLiA docserve log", action='store',required=False)
     #parser.add_argument('-i','--number',dest="num", type=int,help="", action='store',default="",required=False)
     parser.add_argument('logfiles', nargs='+', help='Apache access logs')
     args = parser.parse_args()
@@ -702,17 +808,11 @@ def main():
     data = parseclamlog(args.logfiles)
     with open(outputdir + '/clamstats.html','w',encoding='utf-8') as f:
         print(outputclamreport(data), file=f)
-    #sometimes writing breaks (not sure if due to script abortion), so we first buffer to a file, check integrity and then move it to the final place
-    with open('clamstats.json.new','w',encoding='utf-8') as f:
-        json.dump(data, f, cls=PythonObjectEncoder)
-    #verify integrity
-    with open('clamstats.json.new','r',encoding='utf-8') as f:
-        try:
-            json.load(f)
-            os.rename('clamstats.json.new', 'clamstats.json')
-        except:
-            print("[parselog] clamstats.json INTEGRITY CHECK FAILED!",file=sys.stderr)
 
+    if args.foliadocservelog:
+        data = parseflatlog(args.foliadocservelog)
+        with open(outputdir + '/flatstats.html','w',encoding='utf-8') as f:
+            print(outputflatreport(data), file=f)
 
 if __name__ == '__main__':
     main()
