@@ -381,38 +381,40 @@ def graphlabels(startdate, enddate):
 
 def hitsperdaygraph(name, hitsperday):
     total = len(hitsperday)
-    startdate = date(2016,1,1) #min(hitsperday.keys())
     enddate = datetime.now().date()
-    out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: green\">Github</span></strong> <em>(not unique! no source info!)</em>, <strong><span style=\"color: blue\">Website</span></strong>, <strong><span style=\"color: red\">Radboud internal</span></strong></div>"
-    out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-hitsperday\"></div>\n"
-    out += "<script>\n"
-    out += "new Chartist.Line('#" +name + "-hitsperday', {\n"
-    out += "   labels: " + graphlabels(startdate,enddate) + ",\n"
-    out += "   series: [\n"
-    out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
-    out += "        [" + ",".join((countinternal(hitsperday.get(date,{})) for date in daterange(startdate,enddate))) + " ],\n"
-    out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'ghpages') for date in daterange(startdate,enddate))) + " ],\n"
-    out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'github') for date in daterange(startdate,enddate))) + " ]\n"
-    out += "   ]\n"
-    out += "},{ axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
-    out += "</script>\n"
+    for i, (startdate, label) in enumerate(( (date(datetime.now().year, datetime.now().month,1), "This month"),(date(datetime.now().year,1,1), "This year"), (date(2016,1,1), "All time") )):
+        out =  "<h4>" + label + "</h4>\n"
+        out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: green\">Github</span></strong> <em>(not unique! no source info!)</em>, <strong><span style=\"color: blue\">Website</span></strong>, <strong><span style=\"color: red\">Radboud internal</span></strong></div>"
+        out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-hitsperday-" + str(i) + "\"></div>\n"
+        out += "<script>\n"
+        out += "new Chartist.Line('#" +name + "-hitsperday-" + str(i) + "', {\n"
+        out += "   labels: " + graphlabels(startdate,enddate) + ",\n"
+        out += "   series: [\n"
+        out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
+        out += "        [" + ",".join((countinternal(hitsperday.get(date,{})) for date in daterange(startdate,enddate))) + " ],\n"
+        out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'ghpages') for date in daterange(startdate,enddate))) + " ],\n"
+        out += "        [" + ",".join((counttype(hitsperday.get(date,{}),'github') for date in daterange(startdate,enddate))) + " ]\n"
+        out += "   ]\n"
+        out += "},{ axisX: { scaleMinSpace: 20 }, axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
+        out += "</script>\n"
     return out
 
 def installsperdaygraph(hitsperday):
     total = len(hitsperday)
-    startdate = date(2016,1,1) #min(hitsperday.keys())
     enddate = datetime.now().date()
-    out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong>, <strong><span style=\"color: red\">Radboud internal</span></strong></div>"
-    out += "<div class=\"ct-chart ct-double-octave\" id=\"lamachine-installsperday\"></div>\n"
-    out += "<script>\n"
-    out += "new Chartist.Line('#lamachine-installsperday', {\n"
-    out += "   labels: " + graphlabels(startdate,enddate) + ",\n"
-    out += "   series: [\n"
-    out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
-    out += "        [" + ",".join((countinternal(hitsperday.get(date,{})) for date in daterange(startdate,enddate))) + " ]\n"
-    out += "   ]\n"
-    out += "},{ axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
-    out += "</script>\n"
+    for i, (startdate, label) in enumerate(( (date(datetime.now().year, datetime.now().month,1), "This month"),(date(datetime.now().year,1,1), "This year"), (date(2016,1,1), "All time") )):
+        out =  "<h4>" + label + "</h4>\n"
+        out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total</span></strong>, <strong><span style=\"color: red\">Radboud internal</span></strong></div>"
+        out += "<div class=\"ct-chart ct-double-octave\" id=\"lamachine-installsperday-" + str(i) + "\"></div>\n"
+        out += "<script>\n"
+        out += "new Chartist.Line('#lamachine-installsperday-" + str(i) + "', {\n"
+        out += "   labels: " + graphlabels(startdate,enddate) + ",\n"
+        out += "   series: [\n"
+        out += "        [" + ",".join((str(len(hitsperday.get(date,[]))) for date in daterange(startdate,enddate))) + " ],\n"
+        out += "        [" + ",".join((countinternal(hitsperday.get(date,{})) for date in daterange(startdate,enddate))) + " ]\n"
+        out += "   ]\n"
+        out += "},{ axisX: { scaleMinSpace: 20 }, axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
+        out += "</script>\n"
     return out
 
 def projectsperdaygraph(name, projectsperday, projectsperday_internal):
@@ -424,19 +426,20 @@ def projectsperdaygraph(name, projectsperday, projectsperday_internal):
         return str(count)
 
     total = len(projectsperday)
-    startdate = date(2016,1,1) #min(projectsperday.keys())
     enddate = datetime.now().date()
-    out =  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total new projects per day</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">By internal sources</span></strong></div>"
-    out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-projectsperday\"></div>\n"
-    out += "<script>\n"
-    out += "new Chartist.Line('#" +name + "-projectsperday', {\n"
-    out += "   labels: " + graphlabels(startdate,enddate) + ",\n"
-    out += "   series: [\n"
-    out += "        [" + ",".join((str(projectsperday.get(date,0)) for date in daterange(startdate,enddate))) + " ],\n"
-    out += "        [" + ",".join((str(projectsperday_internal.get(date,0)) for date in daterange(startdate,enddate))) + " ],\n"
-    out += "   ]\n"
-    out += "},{ axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
-    out += "</script>\n"
+    for i, (startdate, label) in enumerate(( (date(datetime.now().year, datetime.now().month,1), "This month"),(date(datetime.now().year,1,1), "This year"), (date(2016,1,1), "All time") )):
+        out =  "<h4>" + label + "</h4>\n"
+        out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total new projects per day</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">By internal sources</span></strong></div>"
+        out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-projectsperday-" + str(i) + "\"></div>\n"
+        out += "<script>\n"
+        out += "new Chartist.Line('#" +name + "-projectsperday-" + str(i) + "', {\n"
+        out += "   labels: " + graphlabels(startdate,enddate) + ",\n"
+        out += "   series: [\n"
+        out += "        [" + ",".join((str(projectsperday.get(date,0)) for date in daterange(startdate,enddate))) + " ],\n"
+        out += "        [" + ",".join((str(projectsperday_internal.get(date,0)) for date in daterange(startdate,enddate))) + " ],\n"
+        out += "   ]\n"
+        out += "},{ axisX: { scaleMinSpace: 20 }, axisY: { onlyInteger: true}, fullWidth: true, low: 0, lineSmooth: Chartist.Interpolation.cardinal({tension: 0.5, fillHoles: false}) } );\n"
+        out += "</script>\n"
     return out
 
 
@@ -474,27 +477,27 @@ def header(data):
             .ct-series-a .ct-line,
             .ct-series-a .ct-point {
                 stroke: black;
-                stroke-width: 3px;
+                stroke-width: 2px;
               }
 
             /* github */
             .ct-series-b .ct-line,
             .ct-series-b .ct-point {
                 stroke: red;
-                stroke-width: 2px;
+                stroke-width: 1px;
             }
 
             /* ghpages */
             .ct-series-c .ct-line,
             .ct-series-c .ct-point {
                 stroke: blue;
-                stroke-width: 2px;
+                stroke-width: 1px;
             }
             /* internal */
             .ct-series-d .ct-line,
             .ct-series-d .ct-point {
                 stroke: green;
-                stroke-width: 2px;
+                stroke-width: 1px;
             }
 
             .legend {
@@ -571,14 +574,15 @@ def outputreport(data):
     out += totaltable(data,'hitsperday','totalhits')
     out += "</section>"
     for name in sorted(data['names'], key= lambda x: x.lower()):
-        out += "<section>\n"
-        out += "        <a name=\"" + name + "\"></a>"
-        out += "        <h2>" + name + "</h2>\n"
-        out += "        <h3>" + name + " - Visits per day</h3>"
-        out += "<div class=\"tablebox\">" + toptable(data['hitsperday'][name],"country","Country",10, False) + "</div>"
-        out += "<div class=\"tablebox\">" + toptable(data['hitsperday'][name],"platform","Platform",10, False) + "</div>"
-        out += hitsperdaygraph(name, data['hitsperday'][name])
-        out += "</section>\n"
+        if name.strip() and data['totalhits'][name] >= 10:
+            out += "<section>\n"
+            out += "        <a name=\"" + name + "\"></a>"
+            out += "        <h2>" + name + "</h2>\n"
+            out += "        <h3>" + name + " - Visits per day</h3>"
+            out += "<div class=\"tablebox\">" + toptable(data['hitsperday'][name],"country","Country",10, False) + "</div>"
+            out += "<div class=\"tablebox\">" + toptable(data['hitsperday'][name],"platform","Platform",10, False) + "</div>"
+            out += hitsperdaygraph(name, data['hitsperday'][name])
+            out += "</section>\n"
     out += """    </body>
 </html>"""
     return out
@@ -591,12 +595,12 @@ def outputclamreport(data):
     out += totaltable(data,'projectsperday','totalprojects')
     out += "</section>"
     for name in sorted(data['names'], key= lambda x: x.lower()):
-        out += "<section>\n"
-        out += "        <a name=\"" + name + "\"></a>"
-        out += "        <h2>" + name + "</h2>\n"
-        out += "        <h3>" + name + " - New projects per day</h3>"
-        out += projectsperdaygraph(name, data['projectsperday'][name], data['projectsperday_internal'][name])
-        out += "</section>\n"
+            out += "<section>\n"
+            out += "        <a name=\"" + name + "\"></a>"
+            out += "        <h2>" + name + "</h2>\n"
+            out += "        <h3>" + name + " - New projects per day</h3>"
+            out += projectsperdaygraph(name, data['projectsperday'][name], data['projectsperday_internal'][name])
+            out += "</section>\n"
     out += """    </body>
 </html>"""
     return out
