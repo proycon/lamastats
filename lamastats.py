@@ -356,7 +356,7 @@ def parseclamlog(logfiles):
 def parseflatlog(logfile):
     data = {
         'readdocumentsperday': defaultdict(int),
-        'writedocumentsperday': defaultdict(int),
+        'wrotedocumentsperday': defaultdict(int),
         'editsperday': defaultdict(int),
         'latest': "",
     }
