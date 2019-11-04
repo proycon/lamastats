@@ -638,7 +638,7 @@ def totaltable(data, hits_key='hitsperday', totalhits_key='totalhits'):
     out = "<table>\n"
     out += "<tr><th>Name</th><th>All time</th><th>Last 30 days</th><th>Avg per day</th><th>Last 7 days</th><th>Avg per day</th></tr>"
     for name in sorted(data['names'], key= lambda x: -1 * data[totalhits_key][x]):
-        if name.strip() and data['totalhits'][name] >= 10:
+        if name.strip() and data[totalhits_key][name] >= 10:
             out += "<tr><th><a href=\"#" + name + "\">" + name + "</a></th>"
             out += "<td>" + str(data[totalhits_key][name]) + "</td>"
             total7 = sum( ( v if isinstance(v,int) else len(v) for k,v in data[hits_key][name].items() if k >= pastdate7 ) )
