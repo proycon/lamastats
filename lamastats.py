@@ -306,7 +306,7 @@ def parseclamlog(logfiles):
             f = open(logfile,'r',encoding='utf-8')
         for line in f:
             found = False
-            if line.find('/actions/process/') != -1:
+            if line.find('/actions/') != -1:
                 try:
                     parsed_line = line_parser(line)
                 except:
