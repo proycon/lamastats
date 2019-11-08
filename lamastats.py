@@ -305,7 +305,20 @@ def parseclamlog(logfiles):
         else:
             f = open(logfile,'r',encoding='utf-8')
         for line in f:
-            if line.find('PUT') != -1:
+            found = False
+            if line.find('/actions/process/') != -1:
+                try:
+                    parsed_line = line_parser(line)
+                except:
+                    print("ERROR!! UNABLE TO PARSE LINE : " ,line,file=sys.stderr)
+                #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
+                if parsed_line['request_method'] == 'GET':
+                    fields = parsed_line['request_url'].strip('/').split('/')
+                    if not fields or line.find('lamawebcheck') != -1:
+                        continue
+                    name = fields[0]
+                    found = True
+            elif line.find('PUT') != -1:
                 try:
                     parsed_line = line_parser(line)
                 except:
@@ -317,27 +330,29 @@ def parseclamlog(logfiles):
                     if len(fields) != 2 or line.find('lamawebcheck') != -1:
                         continue
                     name = fields[0]
-                    data['names'].add(name)
-                    dt = parsed_line['time_received_datetimeobj']
-                    dts = dt.strftime('%Y-%m-%d %H:%M:%S')
-                    date = dt.date().strftime('%Y-%m-%d')
-                    if dts < data['latest']:
-                        continue #already counted
-                    elif dts > latest:
-                        latest = dts
+                    found = True
+            if found:
+                data['names'].add(name)
+                dt = parsed_line['time_received_datetimeobj']
+                dts = dt.strftime('%Y-%m-%d %H:%M:%S')
+                date = dt.date().strftime('%Y-%m-%d')
+                if dts < data['latest']:
+                    continue #already counted
+                elif dts > latest:
+                    latest = dts
 
-                    ip = parsed_line['remote_host']
-                    if ip in ignoreips:
-                        continue
+                ip = parsed_line['remote_host']
+                if ip in ignoreips:
+                    continue
 
-                    if ip in internalips or ininternalblock(ip):
-                        if not date in data['projectsperday_internal'][name]: data['projectsperday_internal'][name][date] = 0
-                        data['projectsperday_internal'][name][date] += 1
-                    newhits += 1
-                    if not date in data['projectsperday'][name]: data['projectsperday'][name][date] = 0
-                    data['projectsperday'][name][date] += 1
-                    if not name in data['totalprojects']: data['totalprojects'][name] = 0
-                    data['totalprojects'][name] += 1
+                if ip in internalips or ininternalblock(ip):
+                    if not date in data['projectsperday_internal'][name]: data['projectsperday_internal'][name][date] = 0
+                    data['projectsperday_internal'][name][date] += 1
+                newhits += 1
+                if not date in data['projectsperday'][name]: data['projectsperday'][name][date] = 0
+                data['projectsperday'][name][date] += 1
+                if not name in data['totalprojects']: data['totalprojects'][name] = 0
+                data['totalprojects'][name] += 1
 
     data['latest'] = latest
     #sometimes writing breaks (not sure if due to script abortion), so we first buffer to a file, check integrity and then move it to the final place
@@ -510,7 +525,7 @@ def projectsperdaygraph(name, projectsperday, projectsperday_internal):
         labels = graphlabels(startdate, enddate)
         divisor = 1
         out +=  "<h4>" + label + "</h4>\n"
-        out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total new projects per day</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">By internal sources</span></strong></div>"
+        out +=  "       <div class=\"legend\">Legend: <strong><span style=\"color: black\">Total new projects/actions per day</span></strong> <em>(including other sources)</em>, <strong><span style=\"color: red\">By internal sources</span></strong></div>"
         out += "<div class=\"ct-chart ct-double-octave\" id=\"" + name + "-projectsperday-" + str(i) + "\"></div>\n"
         out += "<script>\n"
         out += "new Chartist.Line('#" +name + "-projectsperday-" + str(i) + "', {\n"
