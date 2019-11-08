@@ -312,7 +312,7 @@ def parseclamlog(logfiles):
                 except:
                     print("ERROR!! UNABLE TO PARSE LINE : " ,line,file=sys.stderr)
                 #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
-                if parsed_line['request_method'] == 'GET':
+                if parsed_line['request_method'] in ('GET','POST','PUT') and parsed_line['status'] == '200':
                     fields = parsed_line['request_url'].strip('/').split('/')
                     if not fields or line.find('lamawebcheck') != -1:
                         continue
