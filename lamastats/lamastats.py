@@ -11,7 +11,7 @@ import apache_log_parser
 import pygeoip
 import os
 
-gi = pygeoip.GeoIP('GeoIP.dat')
+gi = pygeoip.GeoIP(os.path.join(os.path.dirname(__file__),'GeoIP.dat'))
 
 ignoreips = ['77.161.34.157'] #proycon@home, kobus@home,
 internalips = ['127.0.0.1', '131.174.30.3','131.174.30.4'] #localhost, spitfire, applejack
@@ -83,10 +83,10 @@ def loaddata(filename, data):
             else:
                 data[key] = loadeddata[key]
 
-NGINX_PARSER = re.compile(r'(?P<ipaddress>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - - \[(?P<dateandtime>\d{2}\/[a-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2} (\+|\-)\d{4})\] ((\"(GET|POST) )(?P<request_url>.+)(http\/1\.1")) (?P<status>\d{3}) (?P<bytessent>\d+) (["](?P<request_header_referer>(\-)|(.+))["]) (["](?P<request_header_user_agent>.+)["]) (["](?P<remote_host>.+)["])')
+NGINX_PARSER = re.compile(r'(?P<ipaddress>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - "?(?P<remoteuser>[^\s]+)"? \[(?P<dateandtime>\d{2}\/[A-Za-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2} (\+|\-)\d{4})\] ((\"(GET|POST|PUT|DELETE) )(?P<request_url>.+)(HTTP\/1\.1")) (?P<status>\d{3}) (?P<bytessent>\d+) "?(?P<request_header_referer>[^"]+)"? "?(?P<request_header_user_agent>[^"]+)"? "?(?P<remote_host>.+)"?.*')
 def nginx_line_parser(line):
-    parsed_line = NGINX_PARSER.match(line)
-    parsed_line['time_received_datetimeobj'] = datetime.strptime(parsed_line['dateandtime'], "%d/%m/%Y:%H:%M:%S %z")
+    parsed_line = NGINX_PARSER.search(line).groupdict()
+    parsed_line['time_received_datetimeobj'] = datetime.strptime(parsed_line['dateandtime'][:-6], "%d/%b/%Y:%H:%M:%S")
     parsed_line['request_method'] = parsed_line['request_url'][:parsed_line['request_url'].find(" ")]
     return parsed_line
 
@@ -332,8 +332,9 @@ def parseclamlog(logfiles):
             if line.find('/actions/') != -1:
                 try:
                     parsed_line = parse_line(line, mode)
-                except:
-                    print("ERROR!! UNABLE TO PARSE LINE : " ,line,file=sys.stderr)
+                except Exception as e:
+                    print("ERROR!! UNABLE TO PARSE LINE : " ,line, "\nException:",e, file=sys.stderr)
+                    continue
                 #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
                 if parsed_line['request_method'] in ('GET','POST','PUT') and parsed_line['status'] == '200':
                     fields = parsed_line['request_url'].strip('/').split('/')
@@ -344,8 +345,9 @@ def parseclamlog(logfiles):
             elif line.find('PUT') != -1:
                 try:
                     parsed_line = parse_line(line, mode)
-                except:
-                    print("ERROR!! UNABLE TO PARSE LINE : " ,line,file=sys.stderr)
+                except Exception as e:
+                    print("ERROR!! UNABLE TO PARSE LINE : " ,line, "\nException:",e, file=sys.stderr)
+                    continue
                 #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
                 if parsed_line['request_method'] == 'PUT' and parsed_line['status'] == '201':
                     #found a 'project created' entry
@@ -872,7 +874,6 @@ def main():
     outputdir = args.outputdir
     if outputdir[-1] != '/': outputdir += '/'
 
-    data = parselog(args.logfiles)
 
     track = set()
     if args.tracklamachine:
@@ -886,6 +887,8 @@ def main():
     if not track:
         print("No tracking options selected",file=sys.stderr)
         sys.exit(2)
+
+    data = parselog(args.logfiles)
 
     if 'badges' in track:
         with open(outputdir + '/lamastats.html','w',encoding='utf-8') as f:
