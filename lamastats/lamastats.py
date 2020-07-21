@@ -6,15 +6,16 @@ from collections import defaultdict
 from datetime import timedelta, date, datetime
 import gzip
 import json
+import re
 import apache_log_parser
 import pygeoip
 import os
 
 gi = pygeoip.GeoIP('GeoIP.dat')
 
-ignoreips = ('77.161.34.157','84.24.101.84', ) #proycon@home, kobus@home,
-internalips = ('127.0.0.1', '131.174.30.3','131.174.30.4') #localhost, spitfire, applejack
-internalblocks = ('131.174.',)
+ignoreips = ['77.161.34.157'] #proycon@home, kobus@home,
+internalips = ['127.0.0.1', '131.174.30.3','131.174.30.4'] #localhost, spitfire, applejack
+internalblocks = ['131.174.']
 
 def ininternalblock(ip):
     for internalblock in internalblocks:
@@ -25,7 +26,7 @@ def ininternalblock(ip):
 class PythonObjectEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (list, dict, str, int, float, bool, type(None))):
-            return JSONEncoder.default(self, obj)
+            return json.JSONEncoder.default(self, obj)
         elif isinstance(obj, set):
             return {'_set': list(obj)}
         elif isinstance(obj, date):
@@ -82,6 +83,30 @@ def loaddata(filename, data):
             else:
                 data[key] = loadeddata[key]
 
+NGINX_PARSER = re.compile(r'(?P<ipaddress>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - - \[(?P<dateandtime>\d{2}\/[a-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2} (\+|\-)\d{4})\] ((\"(GET|POST) )(?P<request_url>.+)(http\/1\.1")) (?P<status>\d{3}) (?P<bytessent>\d+) (["](?P<request_header_referer>(\-)|(.+))["]) (["](?P<request_header_user_agent>.+)["]) (["](?P<remote_host>.+)["])')
+def nginx_line_parser(line):
+    parsed_line = NGINX_PARSER.match(line)
+    parsed_line['time_received_datetimeobj'] = datetime.strptime(parsed_line['dateandtime'], "%d/%m/%Y:%H:%M:%S %z")
+    parsed_line['request_method'] = parsed_line['request_url'][:parsed_line['request_url'].find(" ")]
+    return parsed_line
+
+def get_mode(logfile):
+    mode = "apache"
+    if logfile.startswith("apache:"):
+        logfile = logfile[7:]
+        mode = "apache"
+    elif logfile.startswith("nginx:"):
+        logfile = logfile[6:]
+        mode = "nginx"
+    return mode, logfile
+
+def parse_line(line, mode):
+    if mode == "apache":
+        parsed_line = line_parser(line)
+    elif mode == "nginx":
+        parsed_line = nginx_line_parser(line)
+    return parsed_line
+
 
 def parselog(logfiles):
     data = {
@@ -100,14 +125,15 @@ def parselog(logfiles):
     line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
     newhits = 0
     for logfile in logfiles:
-        print("[parselog] Reading " + logfile,file=sys.stderr)
+        mode, logfile = get_mode(logfile)
+        print("[parselog] Reading " + logfile + " (" + mode + ")",file=sys.stderr)
         if logfile[-3:] == '.gz':
             f = gzip.open(logfile,'rt',encoding='utf-8')
         else:
             f = open(logfile,'r',encoding='utf-8')
         for line in f:
             if line.find('lamachinetracker') != -1:
-                parsed_line = line_parser(line)
+                parsed_line = parse_line(line, mode)
                 if parsed_line['request_url'].startswith("/lamachinetracker.php/"):
                     args = parsed_line['request_url'][len("/lamachinetracker.php/"):]
                     args = args.split('/')
@@ -118,10 +144,6 @@ def parselog(logfiles):
                     else:
                         print("- skipping invalid lamachinetracker: " + "/".join(args), file=sys.stderr)
                         continue
-
-                    #if form not in ('virtualenv','docker','vagrants') or mode not in ('new','update') or stabledev not in ('stable','dev'):
-                    #    print("- skipping invalid lamachinetracker, invalid form/mode/stabledev", file=sys.stderr)
-                    #    continue
 
                     dt = parsed_line['time_received_datetimeobj']
                     dts = dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -299,6 +321,7 @@ def parseclamlog(logfiles):
     latest = data['latest']
     newhits = 0
     for logfile in sorted(logfiles):
+        mode, logfile = get_mode(logfile)
         print("[parseclamlog] Reading " + logfile,file=sys.stderr)
         if logfile[-3:] == '.gz':
             f = gzip.open(logfile,'rt',encoding='utf-8')
@@ -308,7 +331,7 @@ def parseclamlog(logfiles):
             found = False
             if line.find('/actions/') != -1:
                 try:
-                    parsed_line = line_parser(line)
+                    parsed_line = parse_line(line, mode)
                 except:
                     print("ERROR!! UNABLE TO PARSE LINE : " ,line,file=sys.stderr)
                 #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
@@ -320,7 +343,7 @@ def parseclamlog(logfiles):
                     found = True
             elif line.find('PUT') != -1:
                 try:
-                    parsed_line = line_parser(line)
+                    parsed_line = parse_line(line, mode)
                 except:
                     print("ERROR!! UNABLE TO PARSE LINE : " ,line,file=sys.stderr)
                 #print("DEBUG parsed_line:",parsed_line, file=sys.stderr)
@@ -539,17 +562,18 @@ def projectsperdaygraph(name, projectsperday, projectsperday_internal):
     return out
 
 
-def header(data):
+def header():
     return """<html>
     <head>
-        <title>LaMa Software Statistical Report</title>
+        <title>Usage Reports</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css"/>
         <script src="https://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
         <style>
             body {
                 font-family: sans;
                 font-size: 10px;
-                background: url(https://webservices-lst.science.ru.nl/style/back.png) repeat;
+                background: #eee;
+                margin: 0px;
             }
             .ct-chart {
                 display: block;
@@ -560,7 +584,7 @@ def header(data):
             }
             h1, h2 {
                 text-align: center;
-                color: #939a61;
+                color: #413d5c;
             }
             h2 {
                 font-variant: small-caps;
@@ -609,7 +633,7 @@ def header(data):
             th,td { text-align: left; font-family: sans; font-size: 10px;}
             section {
                 background: white;
-                border: 2px #d2de84 solid;
+                border: 2px #413d5c solid;
                 border-radius: 25px;
                 margin-left: 50px;
                 margin-right: 50px;
@@ -618,17 +642,22 @@ def header(data):
                 font-size: 10px;
             }
             #nav {
-                background: #d2de84;
+                background: #413d5c;
                 color: white;
                 text-align: center;
                 font-size: 14px;
                 padding-top: 5px;
                 padding-bottom: 5px;
             }
+            #nav ul {
+                list-style-type: one;
+                margin: 0;
+                padding: 0;
+            }
             #nav a, #nav a:link, #nav a:active {
                 margin: 0px;
                 padding: 3px;
-                color: black;
+                color: white;
                 font-weight: bold;
             }
             td.avg {
@@ -641,10 +670,22 @@ def header(data):
         </style>
     </head>
     <body>
-    <div id="nav">
-     [ <a href="lamastats.html">Software Statistics</a> | <a href="clamstats.html">Webservice Statistics</a> | <a href="flatstats.html">FLAT Statistics</a> | <a href="lamachinestats.html">LaMachine Statistics</a> ]
-    </div>
     """
+
+def nav(track):
+    s = '<div id="nav">'
+    s += "<ul>"
+    if 'badges' in track:
+        s += '<li><a href="lamastats.html">Software Usage Statistics</a></li>'
+    if 'flat' in track:
+        s += '<li><a href="flatstats.html">FLAT Usage Statistics</a></li>'
+    if 'clam' in track:
+        s += '<li><a href="clamstats.html">Webservice Usage Statistics</a></li>'
+    if 'lamachine' in track:
+        s += '<li><a href="lamachinestats.html">LaMachine Usage Statistics</a></li>'
+    s += "</ul>"
+    s += "</div>"
+    return s
 
 
 def totaltable(data, hits_key='hitsperday', totalhits_key='totalhits'):
@@ -666,8 +707,9 @@ def totaltable(data, hits_key='hitsperday', totalhits_key='totalhits'):
     out += "</table>\n"
     return out
 
-def outputreport(data):
-    out = header(data)
+def outputreport(data, track):
+    out = header()
+    out += nav(track)
     out += "        <h1>LaMa Software Statistical Report</h1>\n"
     out += "<section>"
     out += "<h2>Total</h2>"
@@ -687,20 +729,21 @@ def outputreport(data):
 </html>"""
     return out
 
-def outputclamreport(data):
-    out = header(data)
+def outputclamreport(data, track):
+    out = header()
+    out += nav(track)
     out += "        <h1>CLAM Webservice Statistical Report</h1>\n"
     out += "<section>"
     out += "<h2>Total</h2>"
     out += totaltable(data,'projectsperday','totalprojects')
     out += "</section>"
     for name in sorted(data['names'], key= lambda x: x.lower()):
-            out += "<section>\n"
-            out += "        <a name=\"" + name + "\"></a>"
-            out += "        <h2>" + name + "</h2>\n"
-            out += "        <h3>" + name + " - New projects per day</h3>"
-            out += projectsperdaygraph(name, data['projectsperday'][name], data['projectsperday_internal'][name])
-            out += "</section>\n"
+        out += "<section>\n"
+        out += "        <a name=\"" + name + "\"></a>"
+        out += "        <h2>" + name + "</h2>\n"
+        out += "        <h3>" + name + " - New projects per day</h3>"
+        out += projectsperdaygraph(name, data['projectsperday'][name], data['projectsperday_internal'][name])
+        out += "</section>\n"
     out += """    </body>
 </html>"""
     return out
@@ -731,8 +774,9 @@ def toptable(datalist, key, title, n=25, header=True):
     return out
 
 
-def outputlamachinereport(data):
-    out = header(data)
+def outputlamachinereport(data, track):
+    out = header()
+    out += nav(track)
     out += "        <h1>LaMachine Statistical Report</h1>\n"
     out += "<section>"
     out += "<h2>General Statistics</h2>"
@@ -751,8 +795,9 @@ def outputlamachinereport(data):
 </html>"""
     return out
 
-def outputflatreport(data):
+def outputflatreport(data, track):
     out = header(data)
+    out += nav(track)
     out += "        <h1>FLAT Statistical Report</h1>\n"
     out += "<section>"
     out += "<section>\n"
@@ -803,32 +848,61 @@ def outputflatreport(data):
     return out
 
 def main():
-    parser = argparse.ArgumentParser(description="Language Machines Software Statistical Analyser", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    #parser.add_argument('--storeconst',dest='settype',help="", action='store_const',const='somevalue')
+    global ignoreips, internalips, internalblocks
+    parser = argparse.ArgumentParser(description="Generate Usage Reports", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-d','--outputdir', type=str,help="Path to output directory", action='store',default="./",required=False)
     parser.add_argument('-F','--foliadocservelog', type=str,help="Path to FoLiA docserve log", action='store',required=False)
-    #parser.add_argument('-i','--number',dest="num", type=int,help="", action='store',default="",required=False)
-    parser.add_argument('logfiles', nargs='+', help='Apache access logs')
+    parser.add_argument('--ignore','-i', type=str, help="Ignore requests from these IPs (space separated list)", required=False)
+    parser.add_argument('--internal','-I', type=str, help="Count these IPs as internal (space separated list)", required=False, default="127.0.0.1")
+    parser.add_argument('--internalblocks', type=str, help="Count these IP prefixes as internal (space separated list)", required=False)
+    parser.add_argument('--tracklamachine',help="Track LaMachine stats", action='store_true', required=False)
+    parser.add_argument('--trackbadges',help="Track software badges", action='store_true', required=False)
+    parser.add_argument('--trackclam',help="Track clam webservices", action='store_true', required=False)
+    parser.add_argument('--trackflat',help="Track FLAT (foliadocserve)", action='store_true', required=False)
+    parser.add_argument('logfiles', nargs='+', help='Access logs, prepend filenames with "apache:" for apache, "nginx:" for nginx')
     args = parser.parse_args()
+
+    if args.ignore:
+        ignoreips = [ x for x in args.ignore.split(" ") if x ]
+    if args.internal:
+        internalips = [ x for x in args.internal.split(" ") if x ]
+    if args.internalblocks:
+        internalblocks = [ x for x in args.internalblocks.split(" ") if x ]
 
     outputdir = args.outputdir
     if outputdir[-1] != '/': outputdir += '/'
 
     data = parselog(args.logfiles)
 
-    with open(outputdir + '/lamastats.html','w',encoding='utf-8') as f:
-        print(outputreport(data), file=f)
-    with open(outputdir + '/lamachinestats.html','w',encoding='utf-8') as f:
-        print(outputlamachinereport(data), file=f)
+    track = set()
+    if args.tracklamachine:
+        track.add("lamachine")
+    elif args.trackbadges:
+        track.add("badges")
+    elif args.trackclam:
+        track.add("clam")
+    elif args.trackflat or args.foliadocservelog:
+        track.add("flat")
+    if not track:
+        print("No tracking options selected",file=sys.stderr)
+        sys.exit(2)
 
-    data = parseclamlog(args.logfiles)
-    with open(outputdir + '/clamstats.html','w',encoding='utf-8') as f:
-        print(outputclamreport(data), file=f)
+    if 'badges' in track:
+        with open(outputdir + '/lamastats.html','w',encoding='utf-8') as f:
+            print(outputreport(data, track), file=f)
+    if 'lamachine' in track:
+        with open(outputdir + '/lamachinestats.html','w',encoding='utf-8') as f:
+            print(outputlamachinereport(data, track), file=f)
 
-    if args.foliadocservelog:
+    if 'clam' in track:
+        data = parseclamlog(args.logfiles)
+        with open(outputdir + '/clamstats.html','w',encoding='utf-8') as f:
+            print(outputclamreport(data, track), file=f)
+
+    if 'flat' in track and args.foliadocservelog:
         data = parseflatlog(args.foliadocservelog)
         with open(outputdir + '/flatstats.html','w',encoding='utf-8') as f:
-            print(outputflatreport(data), file=f)
+            print(outputflatreport(data, track), file=f)
 
 if __name__ == '__main__':
     main()
