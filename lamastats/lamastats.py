@@ -83,11 +83,10 @@ def loaddata(filename, data):
             else:
                 data[key] = loadeddata[key]
 
-NGINX_PARSER = re.compile(r'(?P<ipaddress>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - "?(?P<remoteuser>[^\s]+)"? \[(?P<dateandtime>\d{2}\/[A-Za-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2} (\+|\-)\d{4})\] ((\"(GET|POST|PUT|DELETE) )(?P<request_url>.+)(HTTP\/1\.1")) (?P<status>\d{3}) (?P<bytessent>\d+) "?(?P<request_header_referer>[^"]+)"? "?(?P<request_header_user_agent>[^"]+)"? "?(?P<remote_host>.+)"?.*')
+NGINX_PARSER = re.compile(r'(?P<ipaddress>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}) - "?(?P<remoteuser>[^\s]+)"? \[(?P<dateandtime>\d{2}\/[A-Za-z]{3}\/\d{4}:\d{2}:\d{2}:\d{2} (\+|\-)\d{4})\] \"(?P<request_method>(GET|POST|PUT|DELETE)) (?P<request_url>.+) (HTTP\/1\.1") (?P<status>\d{3}) (?P<bytessent>\d+) "?(?P<request_header_referer>[^"]+)"? "?(?P<request_header_user_agent>[^"]+)"? "?(?P<remote_host>[^"]+)"?.*')
 def nginx_line_parser(line):
     parsed_line = NGINX_PARSER.search(line).groupdict()
     parsed_line['time_received_datetimeobj'] = datetime.strptime(parsed_line['dateandtime'][:-6], "%d/%b/%Y:%H:%M:%S")
-    parsed_line['request_method'] = parsed_line['request_url'][:parsed_line['request_url'].find(" ")]
     return parsed_line
 
 def get_mode(logfile):
