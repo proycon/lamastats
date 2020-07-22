@@ -20,7 +20,7 @@ setup(
     version = "0.2.0",
     author = "Maarten van Gompel",
     author_email = "proycon@anaproy.nl",
-    description = ("Simple tracking solution for presenting usage statistics on several components included in LaMachine."),
+    description = ("Simple visitor analytics application for presenting usage statistics on several components included in LaMachine."),
     license = "GPL",
     keywords = "analytics",
     url = "https://github.com/proycon/lamastats",
