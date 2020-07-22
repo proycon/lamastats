@@ -16,6 +16,7 @@ gi = pygeoip.GeoIP(os.path.join(os.path.dirname(__file__),'GeoIP.dat'))
 ignoreips = ['77.161.34.157'] #proycon@home, kobus@home,
 internalips = ['127.0.0.1', '131.174.30.3','131.174.30.4'] #localhost, spitfire, applejack
 internalblocks = ['131.174.']
+line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
 
 def ininternalblock(ip):
     for internalblock in internalblocks:
@@ -121,7 +122,6 @@ def parselog(logfiles):
     }
     loaddata('lamastats.json', data)
     latest = data['latest']
-    line_parser = apache_log_parser.make_parser("%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"")
     newhits = 0
     for logfile in logfiles:
         mode, logfile = get_mode(logfile)
